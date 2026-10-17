@@ -52,11 +52,6 @@ export const HomePage: React.FC = () => {
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressing, setCompressing] = useState<boolean>(false);
-  const [compressionStats, setCompressionStats] = useState<{
-    origSize: string;
-    compSize: string;
-    ratio: string;
-  } | null>(null);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -73,20 +68,11 @@ export const HomePage: React.FC = () => {
 
     setCompressing(true);
     try {
-      const origKB = (file.size / 1024).toFixed(0) + " KB";
-      const { blob, size } = await compressImage(file, 1200, 1200, 0.82);
-      const compKB = (size / 1024).toFixed(0) + " KB";
-      const savedPct = Math.round(((file.size - size) / file.size) * 100);
-
+      const { blob } = await compressImage(file, 1200, 1200, 0.82);
       const previewUrl = URL.createObjectURL(blob);
       setBannerFile(file);
       setCompressedBlob(blob);
       setBannerPreview(previewUrl);
-      setCompressionStats({
-        origSize: origKB,
-        compSize: compKB,
-        ratio: savedPct > 0 ? `ลดขนาดลง ${savedPct}%` : "พร้อมใช้งาน",
-      });
     } catch (err: any) {
       console.error("Compression error:", err);
       alert("ไม่สามารถบีบอัดรูปภาพได้: " + (err.message || ""));
@@ -545,9 +531,10 @@ export const HomePage: React.FC = () => {
 
       {/* Modal: Create Tournament (Fully synchronized with Card details) */}
       {isAdmin && isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-          <div className="bg-[#0e1422] border border-white/[0.12] w-full max-w-2xl rounded-2xl shadow-2xl p-6 sm:p-7 tcg-card my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08] mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-hidden">
+          <div className="bg-[#0e1422] border border-white/[0.12] w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl shadow-2xl tcg-card overflow-hidden">
+            {/* Modal Header - Fixed at Top */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#0e1422] flex-shrink-0">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Shield className="w-5 h-5 text-amber-400" />
                 <span>สร้างการแข่งขันใหม่</span>
@@ -561,7 +548,9 @@ export const HomePage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTournament} className="space-y-5">
+            {/* Scrollable Form Body */}
+            <div className="overflow-y-auto px-6 py-5 flex-1">
+              <form onSubmit={handleCreateTournament} className="space-y-5">
               {/* Row 1: Tournament Name */}
               <div>
                 <label className="block text-xs font-semibold text-gray-200 mb-1.5">
@@ -811,12 +800,6 @@ export const HomePage: React.FC = () => {
                     <Upload className="w-4 h-4 text-amber-400" />
                     <span>อัปโหลดรูปโปสเตอร์การแข่งขัน</span>
                   </label>
-                  {compressionStats && (
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold font-mono">
-                      ✨ {compressionStats.origSize} ➔{" "}
-                      {compressionStats.compSize} ({compressionStats.ratio})
-                    </span>
-                  )}
                 </div>
 
                 <input
@@ -870,7 +853,6 @@ export const HomePage: React.FC = () => {
                             setBannerFile(null);
                             setCompressedBlob(null);
                             setBannerPreview(null);
-                            setCompressionStats(null);
                             setBannerUrl("/images/vanguard_banner_1.jpg");
                             if (fileInputRef.current)
                               fileInputRef.current.value = "";
@@ -986,7 +968,8 @@ export const HomePage: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
