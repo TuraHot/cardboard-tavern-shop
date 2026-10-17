@@ -1,0 +1,5 @@
+/.env
+/.vscode
+/dist
+/vanguard_tournament_specification_for_ai_agent.md
+/node_modules
