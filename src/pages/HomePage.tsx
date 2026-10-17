@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Tournament, TournamentFormat } from "../types";
 import { Navbar } from "../components/Navbar";
+import { Footer } from "../components/Footer";
 import {
   Plus,
   Swords,
@@ -990,18 +991,7 @@ export const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* SQL Migration Helper Banner at the bottom of the page */}
-      <footer className="mt-12 py-6 border-t border-white/[0.06] bg-[#05070b]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>
-              Cardboard Tavern Tournament System · D-Standard & Premium Swiss
-              Pairings
-            </span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

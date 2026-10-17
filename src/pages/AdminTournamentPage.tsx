@@ -21,6 +21,7 @@ import { LuckyDrawModal } from "../components/LuckyDrawModal";
 import { MetaAnalytics } from "../components/MetaAnalytics";
 import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
+import { Footer } from "../components/Footer";
 import {
   Users,
   Swords,
@@ -911,6 +912,8 @@ export const AdminTournamentPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      <Footer />
 
       {/* Modal: Add Player */}
       {isAddPlayerOpen && (

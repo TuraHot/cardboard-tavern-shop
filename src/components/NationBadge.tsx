@@ -29,7 +29,7 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
         title={`${config.name} (${config.thaiName})`}
       >
         <span className="text-xs opacity-90">{config.iconSymbol}</span>
-        <span>{config.thaiName}</span>
+        <span>{config.name}</span>
       </span>
 
       {showDeckBoss && deckBoss && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Loader2, LogIn, Mail, Lock } from "lucide-react";
 import { Navbar } from "../components/Navbar";
+import { Footer } from "../components/Footer";
 import { useAuth } from "../contexts/AuthContext";
 
 export const LoginPage: React.FC = () => {
@@ -126,6 +127,7 @@ export const LoginPage: React.FC = () => {
           </form>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

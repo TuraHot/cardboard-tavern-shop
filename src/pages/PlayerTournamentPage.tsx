@@ -8,6 +8,7 @@ import { CountdownTimer } from "../components/CountdownTimer";
 import { PairingsList } from "../components/PairingsList";
 import { StandingsTable } from "../components/StandingsTable";
 import { MetaAnalytics } from "../components/MetaAnalytics";
+import { Footer } from "../components/Footer";
 import {
   Swords,
   Trophy,
@@ -350,6 +351,8 @@ export const PlayerTournamentPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };
