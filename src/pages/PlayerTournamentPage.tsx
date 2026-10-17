@@ -14,6 +14,7 @@ import {
   AlertCircle,
   CheckCircle,
   BarChart3,
+  Clock,
 } from "lucide-react";
 
 export const PlayerTournamentPage: React.FC = () => {
@@ -144,7 +145,14 @@ export const PlayerTournamentPage: React.FC = () => {
     (m) => m.round_number === tournament.current_round,
   );
 
-  const standings = calculateStandings(players, matches);
+  const completedRoundMatches =
+    tournament.status === "completed"
+      ? matches
+      : tournament.status === "ongoing"
+        ? matches.filter((m) => m.round_number < tournament.current_round)
+        : [];
+
+  const standings = calculateStandings(players, completedRoundMatches);
 
   return (
     <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16">
@@ -238,41 +246,39 @@ export const PlayerTournamentPage: React.FC = () => {
             )}
           </button>
 
-          {tournament.status === "completed" && (
-            <>
-              <button
-                onClick={() => setActiveTab("standings")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
-                  activeTab === "standings"
-                    ? "bg-amber-500 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.25)] font-black"
-                    : "bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-white border border-white/[0.04]"
-                }`}
-              >
-                <Trophy className="w-4 h-4" />
-                <span>ตารางคะแนน</span>
-                <span
-                  className={`text-[11px] px-2 py-0.2 rounded-full font-mono ${
-                    activeTab === "standings"
-                      ? "bg-gray-950/30 text-gray-950"
-                      : "bg-white/10 text-gray-300"
-                  }`}
-                >
-                  {players.length}
-                </span>
-              </button>
+          <button
+            onClick={() => setActiveTab("standings")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+              activeTab === "standings"
+                ? "bg-amber-500 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.25)] font-black"
+                : "bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-white border border-white/[0.04]"
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>ตารางคะแนน</span>
+            <span
+              className={`text-[11px] px-2 py-0.2 rounded-full font-mono ${
+                activeTab === "standings"
+                  ? "bg-gray-950/30 text-gray-950"
+                  : "bg-white/10 text-gray-300"
+              }`}
+            >
+              {players.length}
+            </span>
+          </button>
 
-              <button
-                onClick={() => setActiveTab("meta")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
-                  activeTab === "meta"
-                    ? "bg-amber-500 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.25)] font-black"
-                    : "bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-white border border-white/[0.04]"
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>วิเคราะห์ Meta</span>
-              </button>
-            </>
+          {tournament.status === "completed" && (
+            <button
+              onClick={() => setActiveTab("meta")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                activeTab === "meta"
+                  ? "bg-amber-500 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.25)] font-black"
+                  : "bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 hover:text-white border border-white/[0.04]"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>วิเคราะห์ Meta</span>
+            </button>
           )}
         </div>
 
@@ -310,8 +316,31 @@ export const PlayerTournamentPage: React.FC = () => {
 
         {/* Tab 2: Standings View */}
         {activeTab === "standings" && (
-          <div>
-            <StandingsTable standings={standings} />
+          <div className="space-y-4">
+            {tournament.status !== "completed" && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    {tournament.status === "ongoing" && tournament.current_round > 1
+                      ? `คะแนนล่าสุดคำนวณจากรอบที่ 1 ถึงรอบที่ ${tournament.current_round - 1}`
+                      : "ยังไม่มีรอบการแข่งขันที่เสร็จสิ้น"}
+                    {" • "}
+                    <span className="text-gray-300">
+                      คะแนนรอบปัจจุบันจะอัปเดตอัตโนมัติเมื่อเริ่มรอบถัดไปหรือจบการแข่งขัน
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
+                  <span>🔒 ซ่อนประเทศและแวนการ์ดหลักจนจบการแข่งขัน</span>
+                </div>
+              </div>
+            )}
+
+            <StandingsTable
+              standings={standings}
+              showNationAndBoss={tournament.status === "completed"}
+            />
           </div>
         )}
 

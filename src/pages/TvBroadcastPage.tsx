@@ -139,7 +139,13 @@ export const TvBroadcastPage: React.FC = () => {
   const currentRoundMatches = matches.filter(
     (m) => m.round_number === tournament.current_round
   );
-  const standings = calculateStandings(players, matches);
+  const completedRoundMatches =
+    tournament.status === 'completed'
+      ? matches
+      : tournament.status === 'ongoing'
+        ? matches.filter((m) => m.round_number < tournament.current_round)
+        : [];
+  const standings = calculateStandings(players, completedRoundMatches);
   const playerMobileUrl = `${window.location.origin}/tournament/${tournament.id}`;
 
   return (
@@ -312,7 +318,10 @@ export const TvBroadcastPage: React.FC = () => {
                 </span>
               </div>
 
-              <StandingsTable standings={standings} />
+              <StandingsTable
+                standings={standings}
+                showNationAndBoss={tournament.status === 'completed'}
+              />
             </div>
           )}
         </div>

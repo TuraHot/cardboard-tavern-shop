@@ -8,12 +8,14 @@ interface StandingsTableProps {
   standings: PlayerStanding[];
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  showNationAndBoss?: boolean;
 }
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
   standings,
   searchQuery = '',
   onSearchChange,
+  showNationAndBoss = true,
 }) => {
   const [internalSearch, setInternalSearch] = useState('');
   const query = searchQuery || internalSearch;
@@ -21,12 +23,19 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   const filteredStandings = standings.filter((s) => {
     if (!query.trim()) return true;
     const lower = query.toLowerCase();
-    return (
+    const matchBasic =
       s.player.name.toLowerCase().includes(lower) ||
-      s.player.lucky_draw_number.toString() === lower.replace('🍀', '').trim() ||
-      s.player.nation.toLowerCase().includes(lower) ||
-      (s.player.deck_boss && s.player.deck_boss.toLowerCase().includes(lower))
-    );
+      s.player.lucky_draw_number.toString() === lower.replace('🍀', '').trim();
+
+    if (matchBasic) return true;
+
+    if (showNationAndBoss) {
+      return (
+        s.player.nation.toLowerCase().includes(lower) ||
+        (s.player.deck_boss && s.player.deck_boss.toLowerCase().includes(lower))
+      );
+    }
+    return false;
   });
 
   const getRankBadge = (rank: number) => {
@@ -71,7 +80,11 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
               if (onSearchChange) onSearchChange(e.target.value);
               else setInternalSearch(e.target.value);
             }}
-            placeholder="ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก..."
+            placeholder={
+              showNationAndBoss
+                ? 'ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก...'
+                : 'ค้นหาชื่อผู้เล่น หรือ หมายเลข 🍀...'
+            }
             className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
           />
         </div>
@@ -138,11 +151,17 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                               </span>
                             )}
                           </div>
-                          <NationBadge
-                            nation={s.player.nation}
-                            deckBoss={s.player.deck_boss}
-                            size="sm"
-                          />
+                          {showNationAndBoss ? (
+                            <NationBadge
+                              nation={s.player.nation}
+                              deckBoss={s.player.deck_boss}
+                              size="sm"
+                            />
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08]">
+                              <span className="text-gray-500">🔒</span> ซ่อนข้อมูลเด็คจนจบการแข่งขัน
+                            </span>
+                          )}
                         </div>
                       </td>
 
