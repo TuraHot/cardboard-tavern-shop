@@ -182,7 +182,12 @@ export const PlayerTournamentPage: React.FC = () => {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 w-full pt-6 flex-1">
         {/* Tournament Banner Card */}
-        <div className="p-6 rounded-3xl bg-[#0c121e]/90 border border-white/[0.08] shadow-[0_15px_35px_rgba(0,0,0,0.8)] mb-6 tcg-card sleeve-frame">
+        <div
+          style={{
+            backgroundImage: `url('${tournament?.banner_url || "/images/vanguard_banner_1.jpg"}')`,
+          }}
+          className="p-6 rounded-3xl bg-gray-950/75 bg-blend-overlay bg-cover bg-center bg-no-repeat border border-white/[0.08] shadow-[0_15px_35px_rgba(0,0,0,0.8)] mb-6 sleeve-frame"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2.5">

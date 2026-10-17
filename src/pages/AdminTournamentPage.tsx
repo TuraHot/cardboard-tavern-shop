@@ -411,12 +411,19 @@ export const AdminTournamentPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16">
+    <div
+      className={`min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16`}
+    >
       <Navbar tournamentId={tournament.id} tournamentName={tournament.name} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-6 flex-1">
         {/* Admin Header Bar */}
-        <div className="p-6 rounded-3xl bg-[#0c121e]/90 border border-white/[0.08] shadow-[0_15px_35px_rgba(0,0,0,0.8)] mb-6 tcg-card sleeve-frame">
+        <div
+          style={{
+            backgroundImage: `url('${tournament?.banner_url || "/images/vanguard_banner_1.jpg"}')`,
+          }}
+          className="p-6 rounded-3xl bg-gray-950/75 bg-blend-overlay bg-cover bg-center bg-no-repeat border border-white/[0.08] shadow-[0_15px_35px_rgba(0,0,0,0.8)] mb-6 sleeve-frame"
+        >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -979,8 +986,7 @@ export const AdminTournamentPage: React.FC = () => {
 
             {/* รายละเอียดคำเตือน */}
             <p className="text-sm text-gray-300 leading-relaxed mb-6">
-              เมื่อจบการแข่งขันแล้ว
-              ระบบจะสรุปอันดับตารางคะแนน
+              เมื่อจบการแข่งขันแล้ว ระบบจะสรุปอันดับตารางคะแนน
               โดยจะไม่สามารถจับคู่รอบใหม่ได้อีก
             </p>
 

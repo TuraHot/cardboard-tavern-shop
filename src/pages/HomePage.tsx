@@ -33,15 +33,17 @@ export const HomePage: React.FC = () => {
   const [entryFee, setEntryFee] = useState<number>(70);
   const [maxPlayers, setMaxPlayers] = useState<number>(20);
   const [storeName, setStoreName] = useState("Cardboard Tavern");
-  const [location, setLocation] = useState("Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)");
+  const [location, setLocation] = useState(
+    "Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)",
+  );
   const [bannerUrl, setBannerUrl] = useState("/images/vanguard_banner_1.jpg");
   const [maxRounds, setMaxRounds] = useState(4);
   const [roundDuration, setRoundDuration] = useState(30);
   const [description, setDescription] = useState(
     "รางวัลอันดับที่ 1-3 : การ์ดโปรโมประจำเดือน คนละ 4 ใบ+\n" +
-    "รางวัลอันดับที่ 4 เป็นต้นไป : การ์ดโปรโม คนละ 4 ใบ\n" +
-    "มี Lucky Draw สุ่มแจกการ์ดพิเศษ (กรณีผู้แข่ง 16 คนขึ้นไป)\n" +
-    "เปิดลงทะเบียน walk in 12:00 น. | เริ่มแพริ่งแข่งขัน 14:30 น."
+      "รางวัลอันดับที่ 4 เป็นต้นไป : การ์ดโปรโม คนละ 4 ใบ\n" +
+      "มี Lucky Draw สุ่มแจกการ์ดพิเศษ (กรณีผู้แข่ง 16 คนขึ้นไป)\n" +
+      "เปิดลงทะเบียน walk in 12:00 น. | เริ่มแพริ่งแข่งขัน 14:30 น.",
   );
 
   // Banner image upload & compression states
@@ -176,8 +178,9 @@ export const HomePage: React.FC = () => {
             console.warn("Storage upload notice:", uploadErr);
             alert(
               "⚠️ อัปโหลดรูปภาพไปยัง Bucket 'banners' ไม่สำเร็จ:\n" +
-              (uploadErr.message || "กรุณาตรวจสอบว่าได้สร้าง Bucket 'banners' ใน Supabase Storage และเปิด Public Policy แล้ว") +
-              "\n\n(ระบบจะใช้รูปโปสเตอร์เริ่มต้นของร้านแทน เพื่อให้สร้างทัวร์นาเมนต์ได้สำเร็จ)"
+                (uploadErr.message ||
+                  "กรุณาตรวจสอบว่าได้สร้าง Bucket 'banners' ใน Supabase Storage และเปิด Public Policy แล้ว") +
+                "\n\n(ระบบจะใช้รูปโปสเตอร์เริ่มต้นของร้านแทน เพื่อให้สร้างทัวร์นาเมนต์ได้สำเร็จ)",
             );
           } else if (uploadData) {
             const { data: urlData } = supabase.storage
@@ -202,7 +205,9 @@ export const HomePage: React.FC = () => {
         round_duration_minutes: roundDuration,
         status: "registering" as const,
         current_round: 0,
-        event_date: eventDate ? new Date(eventDate).toISOString() : new Date().toISOString(),
+        event_date: eventDate
+          ? new Date(eventDate).toISOString()
+          : new Date().toISOString(),
         entry_fee: Number(entryFee) || 70,
         max_players: Number(maxPlayers) || 20,
         store_name: storeName.trim() || "Cardboard Tavern",
@@ -227,7 +232,10 @@ export const HomePage: React.FC = () => {
           error.message?.includes("column");
 
         if (isMissingColumn) {
-          console.warn("New columns not detected in Supabase yet, creating with base columns:", error.message);
+          console.warn(
+            "New columns not detected in Supabase yet, creating with base columns:",
+            error.message,
+          );
           const basePayload = {
             name: name.trim(),
             format,
@@ -282,7 +290,20 @@ export const HomePage: React.FC = () => {
     try {
       const d = new Date(dateStr);
       const day = d.getDate();
-      const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+      const thaiMonths = [
+        "ม.ค.",
+        "ก.พ.",
+        "มี.ค.",
+        "เม.ย.",
+        "พ.ค.",
+        "มิ.ย.",
+        "ก.ค.",
+        "ส.ค.",
+        "ก.ย.",
+        "ต.ค.",
+        "พ.ย.",
+        "ธ.ค.",
+      ];
       const month = thaiMonths[d.getMonth()];
       const hours = String(d.getHours()).padStart(2, "0");
       const mins = String(d.getMinutes()).padStart(2, "0");
@@ -304,7 +325,9 @@ export const HomePage: React.FC = () => {
               ⚠️ ต้องเปิดสิทธิ์ (RLS Policy) ใน Supabase ก่อนเริ่มใช้งาน
             </h3>
             <p className="text-xs text-amber-200/90 mb-3">
-              รันคำสั่ง <code>ALTER TABLE tournaments DISABLE ROW LEVEL SECURITY;</code> ใน Supabase SQL Editor
+              รันคำสั่ง{" "}
+              <code>ALTER TABLE tournaments DISABLE ROW LEVEL SECURITY;</code>{" "}
+              ใน Supabase SQL Editor
             </p>
           </div>
         )}
@@ -375,9 +398,13 @@ export const HomePage: React.FC = () => {
 
               const currentPlayers = playerCounts[tourney.id] || 0;
               const maxCap = tourney.max_players || 20;
-              const feeText = tourney.entry_fee !== undefined ? `฿${tourney.entry_fee}` : "฿70";
+              const feeText =
+                tourney.entry_fee !== undefined
+                  ? `฿${tourney.entry_fee}`
+                  : "฿70";
               const shopName = tourney.store_name || "Cardboard Tavern";
-              const venue = tourney.location || "Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)";
+              const venue =
+                tourney.location || "Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)";
 
               return (
                 <div
@@ -402,7 +429,11 @@ export const HomePage: React.FC = () => {
                       {/* Top-Left: Date & Time Pill (Matching Reference) */}
                       <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/15 text-[11px] font-bold text-white shadow-md">
                         <Calendar className="w-3 h-3 text-slate-300" />
-                        <span>{formatEventDate(tourney.event_date || tourney.created_at)}</span>
+                        <span>
+                          {formatEventDate(
+                            tourney.event_date || tourney.created_at,
+                          )}
+                        </span>
                       </div>
 
                       {/* Top-Right: RECEPTION / Status Badge (Matching Reference) */}
@@ -448,7 +479,8 @@ export const HomePage: React.FC = () => {
                               alt="CT"
                               className="w-full h-full object-cover rounded-full"
                               onError={(e) => {
-                                (e.target as HTMLElement).style.display = "none";
+                                (e.target as HTMLElement).style.display =
+                                  "none";
                               }}
                             />
                           </div>
@@ -574,23 +606,111 @@ export const HomePage: React.FC = () => {
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
                   >
-                    <option value="Standard TH">Standard (TH) - การ์ดไทย</option>
-                    <option value="Standard JP">Standard (JP) - การ์ดญี่ปุ่น</option>
+                    <option value="Standard TH">
+                      Standard (TH) - การ์ดไทย
+                    </option>
+                    <option value="Standard JP">
+                      Standard (JP) - การ์ดญี่ปุ่น
+                    </option>
                     <option value="Premium TH">Premium (TH) - การ์ดไทย</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    วันและเวลาเริ่มแข่ง<span className="text-amber-400">*</span>
+                    วันและเวลาเริ่มแข่ง (24 ชม.){" "}
+                    <span className="text-amber-400">*</span>
                   </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* 1. ช่องเลือกวันที่ */}
+                    <input
+                      type="date"
+                      required
+                      value={eventDate ? eventDate.split("T")[0] : ""}
+                      onChange={(e) => {
+                        const datePart = e.target.value;
+                        const timePart =
+                          eventDate?.split("T")[1]?.slice(0, 5) || "13:00";
+                        setEventDate(datePart ? `${datePart}T${timePart}` : "");
+                      }}
+                      style={{ colorScheme: "dark" }}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+                    />
+
+                    {/* 2. ช่องเลือกเวลาแบบ 24 ชั่วโมง (ชั่วโมง : นาที) */}
+                    <div className="flex items-center gap-1.5 bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/30">
+                      {/* เลือกชั่วโมง (00 - 23) */}
+                      <select
+                        value={eventDate?.split("T")[1]?.split(":")[0] || "13"}
+                        onChange={(e) => {
+                          const datePart =
+                            eventDate?.split("T")[0] ||
+                            new Date().toISOString().split("T")[0];
+                          const minutePart =
+                            eventDate
+                              ?.split("T")[1]
+                              ?.split(":")[1]
+                              ?.slice(0, 2) || "00";
+                          setEventDate(
+                            `${datePart}T${e.target.value}:${minutePart}`,
+                          );
+                        }}
+                        className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
+                      >
+                        {Array.from({ length: 24 }, (_, i) =>
+                          String(i).padStart(2, "0"),
+                        ).map((hour) => (
+                          <option
+                            key={hour}
+                            value={hour}
+                            className="bg-gray-900 text-white"
+                          >
+                            {hour}
+                          </option>
+                        ))}
+                      </select>
+
+                      <span className="text-amber-400 font-bold">:</span>
+
+                      {/* เลือกนาที (ทีละ 5 นาที: 00, 05, 10, ..., 55) */}
+                      <select
+                        value={
+                          eventDate
+                            ?.split("T")[1]
+                            ?.split(":")[1]
+                            ?.slice(0, 2) || "00"
+                        }
+                        onChange={(e) => {
+                          const datePart =
+                            eventDate?.split("T")[0] ||
+                            new Date().toISOString().split("T")[0];
+                          const hourPart =
+                            eventDate?.split("T")[1]?.split(":")[0] || "13";
+                          setEventDate(
+                            `${datePart}T${hourPart}:${e.target.value}`,
+                          );
+                        }}
+                        className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
+                      >
+                        {Array.from({ length: 12 }, (_, i) =>
+                          String(i * 5).padStart(2, "0"),
+                        ).map((minute) => (
+                          <option
+                            key={minute}
+                            value={minute}
+                            className="bg-gray-900 text-white"
+                          >
+                            {minute}
+                          </option>
+                        ))}
+                      </select>
+
+                      <span className="text-xs text-gray-400 ml-1 shrink-0">
+                        น.
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -620,7 +740,9 @@ export const HomePage: React.FC = () => {
                     min={2}
                     max={128}
                     value={maxPlayers}
-                    onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 20)}
+                    onChange={(e) =>
+                      setMaxPlayers(parseInt(e.target.value) || 20)
+                    }
                     placeholder="20"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
                   />
@@ -635,7 +757,9 @@ export const HomePage: React.FC = () => {
                     min={10}
                     max={120}
                     value={roundDuration}
-                    onChange={(e) => setRoundDuration(parseInt(e.target.value) || 30)}
+                    onChange={(e) =>
+                      setRoundDuration(parseInt(e.target.value) || 30)
+                    }
                     placeholder="30"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
                   />
@@ -650,7 +774,9 @@ export const HomePage: React.FC = () => {
                     min={1}
                     max={10}
                     value={maxRounds}
-                    onChange={(e) => setMaxRounds(parseInt(e.target.value) || 4)}
+                    onChange={(e) =>
+                      setMaxRounds(parseInt(e.target.value) || 4)
+                    }
                     placeholder="4"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
                   />
@@ -695,7 +821,8 @@ export const HomePage: React.FC = () => {
                   </label>
                   {compressionStats && (
                     <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold font-mono">
-                      ✨ {compressionStats.origSize} ➔ {compressionStats.compSize} ({compressionStats.ratio})
+                      ✨ {compressionStats.origSize} ➔{" "}
+                      {compressionStats.compSize} ({compressionStats.ratio})
                     </span>
                   )}
                 </div>
@@ -753,7 +880,8 @@ export const HomePage: React.FC = () => {
                             setBannerPreview(null);
                             setCompressionStats(null);
                             setBannerUrl("/images/vanguard_banner_1.jpg");
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = "";
                           }}
                           className="p-1.5 px-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors shadow-lg"
                           title="ลบรูปและใช้ค่าเริ่มต้น"
@@ -793,7 +921,9 @@ export const HomePage: React.FC = () => {
                       )}
                     </div>
                     <p className="text-sm font-bold text-white mb-1">
-                      {compressing ? "กำลังบีบอัดรูปภาพ..." : "คลิกหรือลากไฟล์ภาพโปสเตอร์มาวางที่นี่"}
+                      {compressing
+                        ? "กำลังบีบอัดรูปภาพ..."
+                        : "คลิกหรือลากไฟล์ภาพโปสเตอร์มาวางที่นี่"}
                     </p>
                     <p className="text-xs text-gray-400 max-w-sm mb-2.5">
                       รองรับไฟล์ภาพ JPG, PNG, WebP
@@ -804,16 +934,36 @@ export const HomePage: React.FC = () => {
 
               {/* Row 6: Tournament Description / Rewards */}
               <div>
-                <label className="block text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between">
-                  <span>รายละเอียดการแข่งขัน / ของรางวัล / กำหนดการ</span>
-                  <span className="text-[11px] text-gray-500 font-light">(แสดงในปุ่ม "รายละเอียด" บนการ์ด)</span>
+                <label className="text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between gap-2">
+                  <div>
+                    <span>รายละเอียดการแข่งขัน / ของรางวัล / กำหนดการ</span>
+                    <span className="text-[11px] text-gray-500 font-light ml-1.5 hidden sm:inline">
+                      (แสดงในหน้าข้อมูลทัวร์นาเมนต์)
+                    </span>
+                  </div>
+
+                  {/* ปุ่มลัดช่วยกรอกแพตเทิร์นของร้านอัตโนมัติ */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDescription(
+                        "รางวัลอันดับที่ 1-3 โปรโมเดือนนี้คนละ 4 ใบ+\nอันดับที่ 4 เป็นต้นไปคนละ 4 ใบ\nมี Lucky Draw 🍀 กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30",
+                      )
+                    }
+                    className="text-[11px] text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 transition-colors"
+                  >
+                    + ใช้ข้อความตั้งต้นของร้าน
+                  </button>
                 </label>
+
                 <textarea
                   rows={4}
-                  value={description}
+                  value={description?.replace(/\\n/g, "\n") || ""}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="เช่น รายละเอียดของรางวัลอันดับ 1-3, กฎ Lucky Draw, เวลา Walk-in..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+                  placeholder={
+                    "เช่น:\nรางวัลอันดับที่ 1-3 โปรโมเดือนนี้...\nมี Lucky Draw กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30"
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 resize-y"
                 />
               </div>
 
@@ -838,7 +988,9 @@ export const HomePage: React.FC = () => {
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
-                    <span>{submitting ? "กำลังสร้าง..." : "สร้างทัวร์นาเมนต์"}</span>
+                    <span>
+                      {submitting ? "กำลังสร้าง..." : "สร้างทัวร์นาเมนต์"}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -852,7 +1004,10 @@ export const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Cardboard Tavern Tournament System · D-Standard & Premium Swiss Pairings</span>
+            <span>
+              Cardboard Tavern Tournament System · D-Standard & Premium Swiss
+              Pairings
+            </span>
           </div>
         </div>
       </footer>
