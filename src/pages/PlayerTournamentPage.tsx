@@ -8,7 +8,6 @@ import { CountdownTimer } from "../components/CountdownTimer";
 import { PairingsList } from "../components/PairingsList";
 import { StandingsTable } from "../components/StandingsTable";
 import { MetaAnalytics } from "../components/MetaAnalytics";
-import { ReportMatchModal } from "../components/ReportMatchModal";
 import {
   Swords,
   Trophy,
@@ -30,40 +29,30 @@ export const PlayerTournamentPage: React.FC = () => {
     "pairings",
   );
 
-  // Match report modal
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isReportOpen, setIsReportOpen] = useState(false);
-
-  // Fetch all tournament data
+  // Fetch all tournament data (3 queries in parallel)
   const fetchData = async () => {
     if (!id) return;
     try {
-      const { data: tData, error: tErr } = await supabase
-        .from("tournaments")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const [tRes, pRes, mRes] = await Promise.all([
+        supabase.from("tournaments").select("*").eq("id", id).single(),
+        supabase
+          .from("players")
+          .select("*")
+          .eq("tournament_id", id)
+          .order("lucky_draw_number", { ascending: true }),
+        supabase
+          .from("matches")
+          .select("*")
+          .eq("tournament_id", id)
+          .order("table_number", { ascending: true }),
+      ]);
 
-      if (tErr) throw tErr;
-      setTournament(tData);
-
-      const { data: pData, error: pErr } = await supabase
-        .from("players")
-        .select("*")
-        .eq("tournament_id", id)
-        .order("lucky_draw_number", { ascending: true });
-
-      if (pErr) throw pErr;
-      setPlayers(pData || []);
-
-      const { data: mData, error: mErr } = await supabase
-        .from("matches")
-        .select("*")
-        .eq("tournament_id", id)
-        .order("table_number", { ascending: true });
-
-      if (mErr) throw mErr;
-      setMatches(mData || []);
+      if (tRes.error) throw tRes.error;
+      if (pRes.error) throw pRes.error;
+      if (mRes.error) throw mRes.error;
+      setTournament(tRes.data);
+      setPlayers(pRes.data || []);
+      setMatches(mRes.data || []);
     } catch (err) {
       console.error("Error fetching tournament data:", err);
     } finally {
@@ -73,6 +62,13 @@ export const PlayerTournamentPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Debounce realtime bursts (e.g. a new round inserts many matches)
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(fetchData, 300);
+    };
 
     const tChannel = supabase
       .channel(`tournament:${id}`)
@@ -84,7 +80,7 @@ export const PlayerTournamentPage: React.FC = () => {
           table: "tournaments",
           filter: `id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
       )
       .on(
         "postgres_changes",
@@ -94,7 +90,7 @@ export const PlayerTournamentPage: React.FC = () => {
           table: "players",
           filter: `tournament_id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
       )
       .on(
         "postgres_changes",
@@ -104,33 +100,15 @@ export const PlayerTournamentPage: React.FC = () => {
           table: "matches",
           filter: `tournament_id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(tChannel);
     };
   }, [id]);
-
-  const handleSaveMatchResult = async (
-    winnerId: string | null,
-    isDoubleLoss: boolean,
-  ) => {
-    if (!selectedMatch) return;
-
-    const { error } = await supabase
-      .from("matches")
-      .update({
-        winner_id: winnerId,
-        is_double_loss: isDoubleLoss,
-        status: "completed",
-      })
-      .eq("id", selectedMatch.id);
-
-    if (error) throw error;
-    await fetchData();
-  };
 
   if (loading) {
     return (
@@ -167,14 +145,6 @@ export const PlayerTournamentPage: React.FC = () => {
   );
 
   const standings = calculateStandings(players, matches);
-
-  const p1 = selectedMatch
-    ? players.find((p) => p.id === selectedMatch.player1_id)
-    : undefined;
-  const p2 =
-    selectedMatch && selectedMatch.player2_id
-      ? players.find((p) => p.id === selectedMatch.player2_id)
-      : undefined;
 
   return (
     <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16">
@@ -326,19 +296,12 @@ export const PlayerTournamentPage: React.FC = () => {
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <span>ตารางประกบคู่รอบที่ {tournament.current_round}</span>
                   </h2>
-                  <span className="text-xs text-amber-300/80 font-medium">
-                    *คลิกโต๊ะของคุณเพื่อส่งผลการแข่งขัน
-                  </span>
                 </div>
 
                 <PairingsList
                   matches={currentRoundMatches}
                   players={players}
-                  canReport={true}
-                  onSelectMatch={(m) => {
-                    setSelectedMatch(m);
-                    setIsReportOpen(true);
-                  }}
+                  canReport={false}
                 />
               </div>
             )}
@@ -358,16 +321,6 @@ export const PlayerTournamentPage: React.FC = () => {
           </div>
         )}
       </main>
-
-      <ReportMatchModal
-        isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        match={selectedMatch}
-        player1={p1}
-        player2={p2}
-        onSaveResult={handleSaveMatchResult}
-        isAdmin={false}
-      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Tv, Settings, Home, Sparkles, Shield } from 'lucide-react';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Tv, Settings, Home, Shield, LogIn, LogOut } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface NavbarProps {
   tournamentId?: string;
@@ -12,6 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   tournamentName,
 }) => {
   const location = useLocation();
+  const { isAdmin, user, signOut } = useAuth();
 
   const isCurrent = (path: string) => location.pathname === path;
 
@@ -34,7 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <span className="text-[11px] text-gray-400 font-medium tracking-tight truncate max-w-[200px] sm:max-w-[320px]">
-              {tournamentName ? `🏆 ${tournamentName}` : 'Cardfight!! Vanguard Tournament System'}
+              {tournamentName
+                ? `🏆 ${tournamentName}`
+                : "Cardfight!! Vanguard Tournament System"}
             </span>
           </div>
         </Link>
@@ -44,55 +48,66 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Link
             to="/"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-              isCurrent('/')
-                ? 'bg-white/10 text-white border border-white/15 shadow-inner'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
+              isCurrent("/")
+                ? "bg-white/10 text-white border border-white/15 shadow-inner"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
             }`}
           >
             <Home className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">หน้าแรก</span>
           </Link>
 
-          {tournamentId && (
+          {tournamentId && isAdmin && (
             <>
-              <Link
-                to={`/tournament/${tournamentId}`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
-                  isCurrent(`/tournament/${tournamentId}`)
-                    ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                    : 'text-gray-400 hover:text-amber-200 hover:bg-white/5'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>มุมมองผู้เล่น</span>
-              </Link>
-
               <Link
                 to={`/tournament/${tournamentId}/tv`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                   isCurrent(`/tournament/${tournamentId}/tv`)
-                    ? 'bg-cyan-500/15 text-cyan-200 border border-cyan-500/30'
-                    : 'text-gray-400 hover:text-cyan-300 hover:bg-white/5'
+                    ? "bg-cyan-500/15 text-cyan-200 border border-cyan-500/30"
+                    : "text-gray-400 hover:text-cyan-300 hover:bg-white/5"
                 }`}
                 title="เปิดจอ TV 1080p สำหรับติดหน้าร้าน"
               >
                 <Tv className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="hidden md:inline">จอทีวี (TV)</span>
               </Link>
-
               <Link
                 to={`/admin/tournament/${tournamentId}`}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                   isCurrent(`/admin/tournament/${tournamentId}`)
-                    ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                    : 'text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10'
+                    ? "bg-gradient-to-r from-amber-600 to-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                    : "text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
                 }`}
               >
                 <Settings className="w-3.5 h-3.5" />
                 <span>จัดการ (Admin)</span>
               </Link>
             </>
+          )}
+          {user ? (
+            <button
+              id="navbar-logout-btn"
+              type="button"
+              onClick={signOut}
+              title={user.email ?? undefined}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-400 hover:text-rose-300 hover:bg-white/5 transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">ออกจากระบบ</span>
+            </button>
+          ) : (
+            !isCurrent("/login") && (
+              <Link
+                id="navbar-login-link"
+                to="/login"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-400 hover:text-amber-200 hover:bg-white/5 transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">เข้าสู่ระบบ</span>
+              </Link>
+            )
           )}
         </nav>
       </div>

@@ -44,6 +44,8 @@ export interface Player {
   name: string;
   nation: VanguardNation;
   deck_boss: string | null;
+  nation_id?: string | null;
+  boss_id?: string | null;
   lucky_draw_number: number;
   is_dropped: boolean;
   has_received_bye: boolean;
@@ -87,4 +89,21 @@ export interface NationTheme {
   textClass: string;
   bgClass: string;
   thaiName: string;
+}
+
+export interface NationRow {
+  id: string;
+  name_en: string;
+  name_th: string;
+  color_code: string;
+  logo_url?: string | null;
+}
+
+export interface BossRow {
+  id: string;
+  nation_id: string;
+  name_en: string;
+  name_th?: string | null;
+  image_url?: string | null;
+  is_active: boolean;
 }

@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { Tournament, Player, Match, VanguardNation } from "../types";
-import { VANGUARD_NATIONS } from "../utils/nations";
+import {
+  Tournament,
+  Player,
+  Match,
+  VanguardNation,
+  NationRow,
+  BossRow,
+} from "../types";
+import { VANGUARD_NATIONS, getNationConfig } from "../utils/nations";
 import { calculateStandings } from "../utils/tiebreaker";
 import { generateSwissPairings } from "../utils/pairing";
 import { Navbar } from "../components/Navbar";
@@ -13,6 +20,7 @@ import { ReportMatchModal } from "../components/ReportMatchModal";
 import { LuckyDrawModal } from "../components/LuckyDrawModal";
 import { MetaAnalytics } from "../components/MetaAnalytics";
 import { NationBadge } from "../components/NationBadge";
+import { BossManagerModal } from "../components/BossManagerModal";
 import {
   Users,
   Swords,
@@ -48,10 +56,15 @@ export const AdminTournamentPage: React.FC = () => {
   const [isLuckyDrawOpen, setIsLuckyDrawOpen] = useState(false);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
   const [isEditPlayerOpen, setIsEditPlayerOpen] = useState(false);
+  const [isBossManagerOpen, setIsBossManagerOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+
+  // Nations & Bosses state
+  const [nations, setNations] = useState<NationRow[]>([]);
+  const [bosses, setBosses] = useState<BossRow[]>([]);
 
   // Add/Edit Player form state
   const [formName, setFormName] = useState("");
@@ -60,37 +73,64 @@ export const AdminTournamentPage: React.FC = () => {
   const [submittingPlayer, setSubmittingPlayer] = useState(false);
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
 
-  // Fetch all data
+  // Fetch nations and bosses
+  const fetchBossesAndNations = async () => {
+    try {
+      const [nRes, bRes] = await Promise.all([
+        supabase
+          .from("nations")
+          .select("*")
+          .order("name_en", { ascending: true }),
+        supabase
+          .from("bosses")
+          .select("*")
+          .order("name_en", { ascending: true }),
+      ]);
+      if (nRes.data) setNations(nRes.data);
+      if (bRes.data) setBosses(bRes.data);
+    } catch (err) {
+      console.error("Failed to load nations/bosses:", err);
+    }
+  };
+
+  // Fetch all data (5 queries in parallel)
   const fetchData = async () => {
     if (!id) return;
     try {
-      const { data: tData, error: tErr } = await supabase
-        .from("tournaments")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (tErr) throw tErr;
-      setTournament(tData);
-      if (tData.current_round > 0) {
-        setSelectedRoundFilter(tData.current_round);
+      const [tRes, pRes, mRes, nRes, bRes] = await Promise.all([
+        supabase.from("tournaments").select("*").eq("id", id).single(),
+        supabase
+          .from("players")
+          .select("*")
+          .eq("tournament_id", id)
+          .order("lucky_draw_number", { ascending: true }),
+        supabase
+          .from("matches")
+          .select("*")
+          .eq("tournament_id", id)
+          .order("round_number", { ascending: true })
+          .order("table_number", { ascending: true }),
+        supabase
+          .from("nations")
+          .select("*")
+          .order("name_en", { ascending: true }),
+        supabase
+          .from("bosses")
+          .select("*")
+          .order("name_en", { ascending: true }),
+      ]);
+      if (tRes.error) throw tRes.error;
+      if (pRes.error) throw pRes.error;
+      if (mRes.error) throw mRes.error;
+
+      setTournament(tRes.data);
+      if (tRes.data.current_round > 0) {
+        setSelectedRoundFilter(tRes.data.current_round);
       }
-
-      const { data: pData, error: pErr } = await supabase
-        .from("players")
-        .select("*")
-        .eq("tournament_id", id)
-        .order("lucky_draw_number", { ascending: true });
-      if (pErr) throw pErr;
-      setPlayers(pData || []);
-
-      const { data: mData, error: mErr } = await supabase
-        .from("matches")
-        .select("*")
-        .eq("tournament_id", id)
-        .order("round_number", { ascending: true })
-        .order("table_number", { ascending: true });
-      if (mErr) throw mErr;
-      setMatches(mData || []);
+      setPlayers(pRes.data || []);
+      setMatches(mRes.data || []);
+      if (nRes.data) setNations(nRes.data);
+      if (bRes.data) setBosses(bRes.data);
     } catch (err) {
       console.error("Failed to load admin data:", err);
     } finally {
@@ -100,6 +140,13 @@ export const AdminTournamentPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Debounce realtime bursts (e.g. a new round inserts many matches)
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(fetchData, 300);
+    };
 
     const channel = supabase
       .channel(`admin:${id}`)
@@ -111,7 +158,7 @@ export const AdminTournamentPage: React.FC = () => {
           table: "tournaments",
           filter: `id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
       )
       .on(
         "postgres_changes",
@@ -121,7 +168,7 @@ export const AdminTournamentPage: React.FC = () => {
           table: "players",
           filter: `tournament_id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
       )
       .on(
         "postgres_changes",
@@ -131,11 +178,30 @@ export const AdminTournamentPage: React.FC = () => {
           table: "matches",
           filter: `tournament_id=eq.${id}`,
         },
-        () => fetchData(),
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bosses",
+        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "nations",
+        },
+        refresh,
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [id]);
@@ -288,11 +354,22 @@ export const AdminTournamentPage: React.FC = () => {
           ? Math.max(...players.map((p) => p.lucky_draw_number || 0)) + 1
           : 1;
 
+      const matchedNation = nations.find(
+        (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
+      );
+      const matchedBoss = bosses.find(
+        (b) =>
+          formDeckBoss.trim() &&
+          b.name_en.toLowerCase() === formDeckBoss.trim().toLowerCase(),
+      );
+
       const { error } = await supabase.from("players").insert({
         tournament_id: id,
         name: formName.trim(),
         nation: formNation,
         deck_boss: formDeckBoss.trim() || null,
+        nation_id: matchedNation?.id || null,
+        boss_id: matchedBoss?.id || null,
         lucky_draw_number: nextLuckyNumber,
         is_dropped: false,
         has_received_bye: false,
@@ -316,12 +393,23 @@ export const AdminTournamentPage: React.FC = () => {
 
     try {
       setSubmittingPlayer(true);
+      const matchedNation = nations.find(
+        (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
+      );
+      const matchedBoss = bosses.find(
+        (b) =>
+          formDeckBoss.trim() &&
+          b.name_en.toLowerCase() === formDeckBoss.trim().toLowerCase(),
+      );
+
       const { error } = await supabase
         .from("players")
         .update({
           name: formName.trim(),
           nation: formNation,
           deck_boss: formDeckBoss.trim() || null,
+          nation_id: matchedNation?.id || null,
+          boss_id: matchedBoss?.id || null,
         })
         .eq("id", editingPlayer.id);
 
@@ -653,7 +741,7 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 2: Player Management */}
         {activeTab === "players" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-bold text-white">
                   รายชื่อผู้เข้าแข่งขันทั้งหมด
@@ -664,20 +752,40 @@ export const AdminTournamentPage: React.FC = () => {
                 </p>
               </div>
 
-              {tournament.status === "registering" && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    setFormName("");
-                    setFormDeckBoss("");
-                    setFormNation("Dragon Empire");
-                    setIsAddPlayerOpen(true);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-all"
+                  type="button"
+                  onClick={() => setIsBossManagerOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-gray-200 border border-white/10 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm"
+                  title="จัดการฐานข้อมูลแวนการ์ดหลัก"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>เพิ่มผู้เล่น</span>
+                  <Shield className="w-4 h-4 text-amber-400" />
+                  <span>จัดการหน้าแวนการ์ดหลัก</span>
+                  {bosses.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                      {bosses.length}
+                    </span>
+                  )}
                 </button>
-              )}
+
+                {tournament.status === "registering" && (
+                  <button
+                    onClick={() => {
+                      setFormName("");
+                      setFormDeckBoss("");
+                      setFormNation(
+                        (nations[0]?.name_en as VanguardNation) ||
+                          "Dragon Empire",
+                      );
+                      setIsAddPlayerOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-all"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>เพิ่มผู้เล่น</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/[0.08] bg-[#0c121e]/90 overflow-hidden shadow-xl tcg-card">
@@ -829,7 +937,7 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ
+                  ประเทศ (Nation)
                 </label>
                 <select
                   value={formNation}
@@ -838,25 +946,126 @@ export const AdminTournamentPage: React.FC = () => {
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
                 >
-                  {VANGUARD_NATIONS.map((n) => (
-                    <option key={n.name} value={n.name}>
-                      {n.iconSymbol} {n.name} ({n.thaiName})
-                    </option>
-                  ))}
+                  {(nations.length > 0
+                    ? nations.map((n) => ({
+                        name: n.name_en as VanguardNation,
+                        thaiName: n.name_th,
+                        id: n.id,
+                      }))
+                    : VANGUARD_NATIONS.map((n) => ({
+                        name: n.name,
+                        thaiName: n.thaiName,
+                        id: n.name,
+                      }))
+                  ).map((n) => {
+                    const cfg = getNationConfig(n.name);
+                    return (
+                      <option key={n.id} value={n.name}>
+                        {cfg.iconSymbol} {n.name} ({n.thaiName})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ชื่อแวนการ์ดหลัก
-                </label>
-                <input
-                  type="text"
-                  value={formDeckBoss}
-                  onChange={(e) => setFormDeckBoss(e.target.value)}
-                  placeholder="เช่น Dragonic Overlord"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-300">
+                    ชื่อแวนการ์ดหลัก
+                  </label>
+                  {bosses.filter(
+                    (b) =>
+                      nations.find(
+                        (n) =>
+                          n.name_en.toLowerCase() === formNation.toLowerCase(),
+                      )?.id === b.nation_id,
+                  ).length > 0 && (
+                    <span className="text-[11px] text-amber-300/80">
+                      พบแวนการ์ดหลัก{" "}
+                      {
+                        bosses.filter(
+                          (b) =>
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        ).length
+                      }{" "}
+                      ตัวในเนชั่นนี้
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {bosses.filter(
+                    (b) =>
+                      nations.find(
+                        (n) =>
+                          n.name_en.toLowerCase() === formNation.toLowerCase(),
+                      )?.id === b.nation_id,
+                  ).length > 0 && (
+                    <select
+                      value={
+                        bosses.some(
+                          (b) =>
+                            b.name_en === formDeckBoss &&
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        )
+                          ? formDeckBoss
+                          : formDeckBoss
+                            ? "__custom__"
+                            : ""
+                      }
+                      onChange={(e) => {
+                        if (e.target.value !== "__custom__") {
+                          setFormDeckBoss(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
+                    >
+                      <option value="">
+                        -- เลือกจากฐานข้อมูลแวนการ์ดหลัก (
+                        {
+                          bosses.filter(
+                            (b) =>
+                              nations.find(
+                                (n) =>
+                                  n.name_en.toLowerCase() ===
+                                  formNation.toLowerCase(),
+                              )?.id === b.nation_id,
+                          ).length
+                        }{" "}
+                        ตัว) --
+                      </option>
+                      {bosses
+                        .filter(
+                          (b) =>
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        )
+                        .map((b) => (
+                          <option key={b.id} value={b.name_en}>
+                            {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
+                          </option>
+                        ))}
+                      <option value="__custom__">✏️ พิมพ์ระบุชื่อเอง...</option>
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    value={formDeckBoss}
+                    onChange={(e) => setFormDeckBoss(e.target.value)}
+                    placeholder="เช่น Dragonic Overlord หรือเลือกจากด้านบน"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -903,7 +1112,7 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ
+                  ประเทศ (Nation)
                 </label>
                 <select
                   value={formNation}
@@ -912,24 +1121,126 @@ export const AdminTournamentPage: React.FC = () => {
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
                 >
-                  {VANGUARD_NATIONS.map((n) => (
-                    <option key={n.name} value={n.name}>
-                      {n.iconSymbol} {n.name} ({n.thaiName})
-                    </option>
-                  ))}
+                  {(nations.length > 0
+                    ? nations.map((n) => ({
+                        name: n.name_en as VanguardNation,
+                        thaiName: n.name_th,
+                        id: n.id,
+                      }))
+                    : VANGUARD_NATIONS.map((n) => ({
+                        name: n.name,
+                        thaiName: n.thaiName,
+                        id: n.name,
+                      }))
+                  ).map((n) => {
+                    const cfg = getNationConfig(n.name);
+                    return (
+                      <option key={n.id} value={n.name}>
+                        {cfg.iconSymbol} {n.name} ({n.thaiName})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ชื่อแวนการ์ดหลัก
-                </label>
-                <input
-                  type="text"
-                  value={formDeckBoss}
-                  onChange={(e) => setFormDeckBoss(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-300">
+                    ชื่อแวนการ์ดหลัก
+                  </label>
+                  {bosses.filter(
+                    (b) =>
+                      nations.find(
+                        (n) =>
+                          n.name_en.toLowerCase() === formNation.toLowerCase(),
+                      )?.id === b.nation_id,
+                  ).length > 0 && (
+                    <span className="text-[11px] text-amber-300/80">
+                      พบแวนการ์ดหลัก{" "}
+                      {
+                        bosses.filter(
+                          (b) =>
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        ).length
+                      }{" "}
+                      ตัวในเนชั่นนี้
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {bosses.filter(
+                    (b) =>
+                      nations.find(
+                        (n) =>
+                          n.name_en.toLowerCase() === formNation.toLowerCase(),
+                      )?.id === b.nation_id,
+                  ).length > 0 && (
+                    <select
+                      value={
+                        bosses.some(
+                          (b) =>
+                            b.name_en === formDeckBoss &&
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        )
+                          ? formDeckBoss
+                          : formDeckBoss
+                            ? "__custom__"
+                            : ""
+                      }
+                      onChange={(e) => {
+                        if (e.target.value !== "__custom__") {
+                          setFormDeckBoss(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
+                    >
+                      <option value="">
+                        -- เลือกจากฐานข้อมูลแวนการ์ดหลัก (
+                        {
+                          bosses.filter(
+                            (b) =>
+                              nations.find(
+                                (n) =>
+                                  n.name_en.toLowerCase() ===
+                                  formNation.toLowerCase(),
+                              )?.id === b.nation_id,
+                          ).length
+                        }{" "}
+                        ตัว) --
+                      </option>
+                      {bosses
+                        .filter(
+                          (b) =>
+                            nations.find(
+                              (n) =>
+                                n.name_en.toLowerCase() ===
+                                formNation.toLowerCase(),
+                            )?.id === b.nation_id,
+                        )
+                        .map((b) => (
+                          <option key={b.id} value={b.name_en}>
+                            {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
+                          </option>
+                        ))}
+                      <option value="__custom__">✏️ พิมพ์ระบุชื่อเอง...</option>
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    value={formDeckBoss}
+                    onChange={(e) => setFormDeckBoss(e.target.value)}
+                    placeholder="เช่น Dragonic Overlord หรือเลือกจากด้านบน"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -1010,6 +1321,14 @@ export const AdminTournamentPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Modal จัดการฐานข้อมูลแวนการ์ดหลัก */}
+      <BossManagerModal
+        isOpen={isBossManagerOpen}
+        onClose={() => setIsBossManagerOpen(false)}
+        nations={nations}
+        bosses={bosses}
+        onRefresh={fetchBossesAndNations}
+      />
     </div>
   );
 };

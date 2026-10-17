@@ -3,3 +3,5 @@
 /dist
 /vanguard_tournament_specification_for_ai_agent.md
 /node_modules
+# Plaintext credentials - never commit
+/supabase/user.json

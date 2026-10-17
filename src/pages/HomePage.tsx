@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Tournament, TournamentFormat } from "../types";
 import { Navbar } from "../components/Navbar";
@@ -7,8 +7,6 @@ import {
   Plus,
   Swords,
   Calendar,
-  Tv,
-  Settings,
   Shield,
   MapPin,
   Users,
@@ -19,9 +17,11 @@ import {
   X,
 } from "lucide-react";
 import { compressImage } from "../utils/compressImage";
+import { useAuth } from "../contexts/AuthContext";
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -94,22 +94,19 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  // Fetch tournaments & player counts
+  // Fetch tournaments & player counts (in parallel)
   const fetchTournaments = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("tournaments")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [{ data, error }, { data: pData }] = await Promise.all([
+        supabase
+          .from("tournaments")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase.from("players").select("tournament_id"),
+      ]);
 
       if (error) throw error;
       setTournaments(data || []);
-
-      // Fetch player counts
-      const { data: pData } = await supabase
-        .from("players")
-        .select("tournament_id");
 
       if (pData) {
         const counts: Record<string, number> = {};
@@ -128,31 +125,36 @@ export const HomePage: React.FC = () => {
   useEffect(() => {
     fetchTournaments();
 
+    // Debounce realtime bursts (e.g. many players inserted at once)
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(fetchTournaments, 300);
+    };
+
     const channel = supabase
       .channel("public:tournaments")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tournaments" },
-        () => {
-          fetchTournaments();
-        },
+        refresh,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "players" },
-        () => {
-          fetchTournaments();
-        },
+        refresh,
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, []);
 
   const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!name.trim()) return;
 
     try {
@@ -346,15 +348,18 @@ export const HomePage: React.FC = () => {
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>สร้างการแข่งขันใหม่</span>
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <button
+                id="create-tournament-btn"
+                onClick={() => setIsModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>สร้างการแข่งขันใหม่</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tournament Cards Grid (Faithful Bushiroad / TCG Event Card Layout) */}
@@ -373,15 +378,19 @@ export const HomePage: React.FC = () => {
             <h3 className="text-base font-bold text-gray-300">
               ยังไม่มีการแข่งขันในขณะนี้
             </h3>
-            <p className="text-gray-500 text-xs mt-1 mb-6 font-light">
-              คลิกปุ่ม "สร้างการแข่งขันใหม่" เพื่อเปิดทัวร์นาเมนต์แรกของร้าน
-            </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 font-black text-xs"
-            >
-              สร้างการแข่งขัน
-            </button>
+            {isAdmin && (
+              <>
+                <p className="text-gray-500 text-xs mt-1 mb-6 font-light">
+                  คลิกปุ่ม "สร้างการแข่งขันใหม่" เพื่อเปิดทัวร์นาเมนต์แรกของร้าน
+                </p>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 font-black text-xs"
+                >
+                  สร้างการแข่งขัน
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 justify-items-center sm:justify-items-stretch">
@@ -409,7 +418,13 @@ export const HomePage: React.FC = () => {
               return (
                 <div
                   key={tourney.id}
-                  onClick={() => navigate(`/tournament/${tourney.id}`)}
+                  onClick={() =>
+                    navigate(
+                      isAdmin
+                        ? `/admin/tournament/${tourney.id}`
+                        : `/tournament/${tourney.id}`,
+                    )
+                  }
                   className="w-full max-w-[380px] rounded-2xl border border-white/[0.08] bg-[#0d121f] hover:border-amber-400/50 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 cursor-pointer group"
                 >
                   {/* Top Poster Visual Section */}
@@ -518,30 +533,6 @@ export const HomePage: React.FC = () => {
                           </span>
                         </span>
                       </div>
-
-                      {/* Right: Quick Action Buttons (Details, TV & Admin) */}
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          to={`/tournament/${tourney.id}/tv`}
-                          target="_blank"
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] text-cyan-400 hover:text-cyan-300 text-[10px] font-bold border border-white/10 flex items-center gap-1 transition-all"
-                          title="เปิดหน้าจอ TV Broadcast"
-                        >
-                          <Tv className="w-3 h-3" />
-                          <span>TV</span>
-                        </Link>
-
-                        <Link
-                          to={`/admin/tournament/${tourney.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1 px-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-[10px] font-black flex items-center gap-1 transition-all shadow-sm"
-                          title="แผงควบคุมผู้ดูแล"
-                        >
-                          <Settings className="w-3 h-3" />
-                          <span>จัดการ</span>
-                        </Link>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -552,7 +543,7 @@ export const HomePage: React.FC = () => {
       </main>
 
       {/* Modal: Create Tournament (Fully synchronized with Card details) */}
-      {isModalOpen && (
+      {isAdmin && isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
           <div className="bg-[#0e1422] border border-white/[0.12] w-full max-w-2xl rounded-2xl shadow-2xl p-6 sm:p-7 tcg-card my-8">
             <div className="flex items-center justify-between pb-4 border-b border-white/[0.08] mb-5">
