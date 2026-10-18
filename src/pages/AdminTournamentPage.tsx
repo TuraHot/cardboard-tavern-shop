@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   Tournament,
@@ -41,6 +41,7 @@ import {
 
 export const AdminTournamentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -62,6 +63,8 @@ export const AdminTournamentPage: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingTournament, setIsDeletingTournament] = useState(false);
 
   // Nations & Bosses state
   const [nations, setNations] = useState<NationRow[]>([]);
@@ -446,6 +449,25 @@ export const AdminTournamentPage: React.FC = () => {
     await fetchData();
   };
 
+  const handleDeleteTournament = async () => {
+    if (!tournament) return;
+    try {
+      setIsDeletingTournament(true);
+      await supabase.from("matches").delete().eq("tournament_id", tournament.id);
+      await supabase.from("players").delete().eq("tournament_id", tournament.id);
+      const { error } = await supabase
+        .from("tournaments")
+        .delete()
+        .eq("id", tournament.id);
+      if (error) throw error;
+      navigate("/", { replace: true });
+    } catch (err: any) {
+      console.error("Error deleting tournament:", err);
+      alert("เกิดข้อผิดพลาดในการลบการแข่งขัน: " + (err.message || err));
+      setIsDeletingTournament(false);
+    }
+  };
+
   const handleSaveMatchResult = async (
     winnerId: string | null,
     isDoubleLoss: boolean,
@@ -556,6 +578,16 @@ export const AdminTournamentPage: React.FC = () => {
                 <Tv className="w-4 h-4 text-cyan-400" />
                 <span>เปิดจอ TV</span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-100 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                title="ลบการแข่งขันนี้"
+              >
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>ลบการแข่งขัน</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1317,6 +1349,59 @@ export const AdminTournamentPage: React.FC = () => {
                 className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-amber-500 hover:bg-amber-400 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all"
               >
                 ยืนยันจบการแข่งขัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal ยืนยันลบการแข่งขัน */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white">
+                ยืนยันการลบการแข่งขัน?
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-300 leading-relaxed mb-6">
+              คุณแน่ใจหรือไม่ว่าต้องการลบการแข่งขัน{" "}
+              <span className="font-bold text-rose-300">"{tournament.name}"</span>?
+              <br />
+              <span className="text-xs text-rose-400/90 mt-2 block bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/20">
+                ⚠️ ข้อมูลผู้เข้าแข่งขัน รอบการแข่ง และผลการแข่งขันทั้งหมดจะถูกลบถาวรและไม่สามารถกู้คืนได้
+              </span>
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeletingTournament}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/10 transition-all disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTournament}
+                onClick={handleDeleteTournament}
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeletingTournament ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <span>กำลังลบ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>ยืนยันลบการแข่งขัน</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
