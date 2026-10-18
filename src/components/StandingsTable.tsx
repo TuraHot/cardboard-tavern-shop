@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { PlayerStanding } from '../types';
 import { NationBadge } from './NationBadge';
-import { formatRate, STANDINGS_FOOTER_NOTICE } from '../utils/tiebreaker';
-import { Medal, Award, Search, Info, Crown } from 'lucide-react';
+import { formatRate } from '../utils/tiebreaker';
+import { Medal, Award, Search, Crown } from 'lucide-react';
 
 interface StandingsTableProps {
   standings: PlayerStanding[];
@@ -193,12 +193,6 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Required Mandatory Thai Footer Notice */}
-        <div className="p-4 bg-black/40 border-t border-white/[0.06] text-xs text-gray-400 flex items-start gap-2.5 leading-relaxed">
-          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <span className="text-gray-300 font-light">{STANDINGS_FOOTER_NOTICE}</span>
         </div>
       </div>
     </div>

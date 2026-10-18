@@ -1,8 +1,5 @@
 import { Match, Player, PlayerStanding } from '../types';
 
-export const STANDINGS_FOOTER_NOTICE =
-  'คะแนนเท่ากันตัดสินด้วย OMW → OOMW — อัตราชนะของคู่แข่ง และของคู่แข่งของคู่แข่ง ขั้นต่ำ 0.33 · 🍀 คือหมายเลขลัคกี้ดรอว์ที่ผู้เล่นได้รับ';
-
 export interface PlayerStats {
   points: number;
   totalMatches: number;
