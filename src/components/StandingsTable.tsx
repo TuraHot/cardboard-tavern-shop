@@ -97,7 +97,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
             <thead>
               <tr className="border-b border-white/[0.08] bg-black/40 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                 <th className="py-3 px-4 text-center w-16">อันดับ</th>
-                <th className="py-3 px-4">ผู้เล่น (Player)</th>
+                <th className="py-3 px-4">ผู้เล่น</th>
                 <th className="py-3 px-3 text-center">แต้ม</th>
                 <th className="py-3 px-3 text-center">ชนะ-แพ้</th>
                 <th className="py-3 px-3 text-center" title="Opponent Match Win % (ขั้นต่ำ 0.33)">
@@ -158,9 +158,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                               size="sm"
                             />
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08]">
-                              <span className="text-gray-500">🔒</span> ซ่อนข้อมูลเด็คจนจบการแข่งขัน
-                            </span>
+                            <></>
                           )}
                         </div>
                       </td>

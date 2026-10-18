@@ -293,15 +293,14 @@ export const PlayerTournamentPage: React.FC = () => {
                   ยังไม่เริ่มการแข่งขันรอบที่ 1
                 </h3>
                 <p className="text-gray-400 text-xs max-w-md mx-auto mb-6">
-                  ขณะนี้อยู่ในช่วงเปิดรับสมัคร เมื่อทางร้านกดเริ่มรอบที่ 1
-                  รายชื่อโต๊ะจะปรากฏทันที
+                  ขณะนี้อยู่ในช่วงเปิดรับสมัคร
                 </p>
               </div>
             ) : (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <span>ตารางประกบคู่รอบที่ {tournament.current_round}</span>
+                    <span>ตารางรอบที่ {tournament.current_round}</span>
                   </h2>
                 </div>
 
@@ -318,26 +317,6 @@ export const PlayerTournamentPage: React.FC = () => {
         {/* Tab 2: Standings View */}
         {activeTab === "standings" && (
           <div className="space-y-4">
-            {tournament.status !== "completed" && (
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>
-                    {tournament.status === "ongoing" && tournament.current_round > 1
-                      ? `คะแนนล่าสุดคำนวณจากรอบที่ 1 ถึงรอบที่ ${tournament.current_round - 1}`
-                      : "ยังไม่มีรอบการแข่งขันที่เสร็จสิ้น"}
-                    {" • "}
-                    <span className="text-gray-300">
-                      คะแนนรอบปัจจุบันจะอัปเดตอัตโนมัติเมื่อเริ่มรอบถัดไปหรือจบการแข่งขัน
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-                  <span>🔒 ซ่อนประเทศและแวนการ์ดหลักจนจบการแข่งขัน</span>
-                </div>
-              </div>
-            )}
-
             <StandingsTable
               standings={standings}
               showNationAndBoss={tournament.status === "completed"}
