@@ -156,10 +156,10 @@ export const PlayerTournamentPage: React.FC = () => {
   const standings = calculateStandings(players, completedRoundMatches);
 
   return (
-    <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16">
+    <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col">
       <Navbar tournamentId={tournament.id} tournamentName={tournament.name} />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 w-full pt-6 flex-1">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 w-full pt-6 pb-12 flex-1">
         {/* Tournament Banner Card */}
         <div
           style={{

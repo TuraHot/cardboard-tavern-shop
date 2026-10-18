@@ -6,7 +6,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
   return (
-    <footer className={`mt-auto py-6 border-t border-white/[0.06] bg-[#05070b]/90 backdrop-blur-md ${className}`}>
+    <footer className={`mt-auto w-full py-6 border-t border-white/[0.06] bg-[#05070b]/90 backdrop-blur-md ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
         {/* Left Side: System Information */}
         <div className="flex items-center gap-2">

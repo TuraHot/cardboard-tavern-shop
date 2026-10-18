@@ -500,12 +500,10 @@ export const AdminTournamentPage: React.FC = () => {
   );
 
   return (
-    <div
-      className={`min-h-screen bg-[#06080d] text-gray-100 flex flex-col pb-16`}
-    >
+    <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col">
       <Navbar tournamentId={tournament.id} tournamentName={tournament.name} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-6 flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-6 pb-12 flex-1">
         {/* Admin Header Bar */}
         <div
           style={{
