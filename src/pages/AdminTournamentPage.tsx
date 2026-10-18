@@ -21,6 +21,7 @@ import { LuckyDrawModal } from "../components/LuckyDrawModal";
 import { MetaAnalytics } from "../components/MetaAnalytics";
 import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
+import { EditTournamentModal } from "../components/EditTournamentModal";
 import { Footer } from "../components/Footer";
 import {
   Users,
@@ -65,6 +66,7 @@ export const AdminTournamentPage: React.FC = () => {
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
+  const [isEditTournamentOpen, setIsEditTournamentOpen] = useState(false);
 
   // Nations & Bosses state
   const [nations, setNations] = useState<NationRow[]>([]);
@@ -581,6 +583,16 @@ export const AdminTournamentPage: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => setIsEditTournamentOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                title="แก้ไขข้อมูลการแข่งขันนี้"
+              >
+                <Edit2 className="w-4 h-4 text-amber-400" />
+                <span>แก้ไขข้อมูล</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setIsDeleteModalOpen(true)}
                 className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-100 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
                 title="ลบการแข่งขันนี้"
@@ -979,6 +991,9 @@ export const AdminTournamentPage: React.FC = () => {
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
                 >
+                  <option value="">
+                    -- เลือกประเทศ --
+                  </option>
                   {(nations.length > 0
                     ? nations.map((n) => ({
                         name: n.name_en as VanguardNation,
@@ -1061,18 +1076,7 @@ export const AdminTournamentPage: React.FC = () => {
                       className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
                     >
                       <option value="">
-                        -- เลือกจากฐานข้อมูลแวนการ์ดหลัก (
-                        {
-                          bosses.filter(
-                            (b) =>
-                              nations.find(
-                                (n) =>
-                                  n.name_en.toLowerCase() ===
-                                  formNation.toLowerCase(),
-                              )?.id === b.nation_id,
-                          ).length
-                        }{" "}
-                        ตัว) --
+                        -- เลือกแวนการ์ดหลัก --
                       </option>
                       {bosses
                         .filter(
@@ -1414,6 +1418,15 @@ export const AdminTournamentPage: React.FC = () => {
         nations={nations}
         bosses={bosses}
         onRefresh={fetchBossesAndNations}
+      />
+      {/* Modal แก้ไขข้อมูลการแข่งขัน */}
+      <EditTournamentModal
+        isOpen={isEditTournamentOpen}
+        onClose={() => setIsEditTournamentOpen(false)}
+        tournament={tournament}
+        onSaved={(updated) => {
+          setTournament(updated);
+        }}
       />
     </div>
   );

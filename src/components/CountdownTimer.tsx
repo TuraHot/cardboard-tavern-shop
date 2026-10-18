@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Play, Pause, AlertCircle } from 'lucide-react';
+import { Clock, Play, Pause, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { sounds } from '../utils/audio';
 
 interface CountdownTimerProps {
@@ -37,6 +37,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   const isRunning = Boolean(timerEndsAt);
   const isPaused = !timerEndsAt && timerPausedRemainingSeconds !== null;
   const hasTriggeredAlarm = useRef(false);
+  const [isMuted, setIsMuted] = useState<boolean>(() => sounds.isMuted());
 
   useEffect(() => {
     const calculateRemaining = () => {
@@ -108,7 +109,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
           {formattedTime}
         </div>
 
-        <div className="mt-4 flex items-center gap-2.5">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
           {isRunning ? (
             <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-200 text-xs font-semibold border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
@@ -129,6 +130,33 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
               <AlertCircle className="w-4 h-4 text-rose-400" /> หมดเวลา!
             </span>
           )}
+
+          {/* Sound Mute/Unmute & Test Control */}
+          <div className="inline-flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-full p-1 pl-2.5 text-xs shadow-inner">
+            <button
+              type="button"
+              onClick={() => {
+                const newMute = sounds.toggleMute();
+                setIsMuted(newMute);
+                if (!newMute) sounds.tick();
+              }}
+              className={`flex items-center gap-1.5 font-semibold transition-colors ${
+                isMuted ? 'text-gray-400 hover:text-white' : 'text-amber-300 hover:text-amber-200'
+              }`}
+              title={isMuted ? 'คลิกเพื่อเปิดเสียงเตือน' : 'คลิกเพื่อปิดเสียงเตือน'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+              <span>{isMuted ? 'เสียง: ปิด' : 'เสียง: เปิด'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => sounds.alarm()}
+              className="px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-[11px] text-gray-300 hover:text-white font-medium transition-colors"
+              title="ทดสอบเสียงหมดเวลา"
+            >
+              ทดสอบเสียง
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -184,6 +212,23 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
             title="รีเซ็ตเวลา"
           >
             รีเซ็ต
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const newMute = sounds.toggleMute();
+              setIsMuted(newMute);
+              if (!newMute) sounds.tick();
+            }}
+            className={`p-1.5 rounded-lg border transition-colors ${
+              isMuted
+                ? 'bg-rose-950/30 border-rose-500/20 text-gray-400 hover:text-white'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+            }`}
+            title={isMuted ? 'คลิกเพื่อเปิดเสียงเตือน' : 'คลิกเพื่อปิดเสียงเตือน'}
+          >
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-amber-400" />}
           </button>
         </div>
       )}

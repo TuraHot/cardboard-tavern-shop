@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Tv, Settings, Home, Shield, LogIn, LogOut } from "lucide-react";
+import { Home, Shield, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 interface NavbarProps {
@@ -9,11 +9,10 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  tournamentId,
   tournamentName,
 }) => {
   const location = useLocation();
-  const { isAdmin, user, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   const isCurrent = (path: string) => location.pathname === path;
 
@@ -57,35 +56,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">หน้าแรก</span>
           </Link>
 
-          {tournamentId && isAdmin && (
-            <>
-              <Link
-                to={`/tournament/${tournamentId}/tv`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                  isCurrent(`/tournament/${tournamentId}/tv`)
-                    ? "bg-cyan-500/15 text-cyan-200 border border-cyan-500/30"
-                    : "text-gray-400 hover:text-cyan-300 hover:bg-white/5"
-                }`}
-                title="เปิดจอ TV 1080p สำหรับติดหน้าร้าน"
-              >
-                <Tv className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden md:inline">จอทีวี (TV)</span>
-              </Link>
-              <Link
-                to={`/admin/tournament/${tournamentId}`}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                  isCurrent(`/admin/tournament/${tournamentId}`)
-                    ? "bg-gradient-to-r from-amber-600 to-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                    : "text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
-                }`}
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>จัดการ (Admin)</span>
-              </Link>
-            </>
-          )}
           {user ? (
             <button
               id="navbar-logout-btn"

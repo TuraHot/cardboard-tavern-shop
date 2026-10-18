@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { Tournament, TournamentFormat } from "../types";
 import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
+import { EditTournamentModal } from "../components/EditTournamentModal";
 import {
   Plus,
   Swords,
@@ -16,6 +17,9 @@ import {
   Trash2,
   Loader2,
   X,
+  Search,
+  CheckCircle2,
+  Edit2,
 } from "lucide-react";
 import { compressImage } from "../utils/compressImage";
 import { useAuth } from "../contexts/AuthContext";
@@ -29,6 +33,9 @@ export const HomePage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
+  const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
   // Form states for creating tournament
   const [name, setName] = useState("แข่งแวนการ์ด D TH วันเสาร์");
   const [format, setFormat] = useState<TournamentFormat>("Standard TH");
@@ -326,6 +333,23 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const activeCount = tournaments.filter((t) => t.status !== "completed").length;
+  const completedCount = tournaments.filter((t) => t.status === "completed").length;
+
+  const filteredTournaments = tournaments.filter((t) => {
+    if (statusFilter === "active" && t.status === "completed") return false;
+    if (statusFilter === "completed" && t.status !== "completed") return false;
+
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.format.toLowerCase().includes(q) ||
+      (t.location && t.location.toLowerCase().includes(q)) ||
+      (t.store_name && t.store_name.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="min-h-screen bg-[#07090e] text-gray-100 flex flex-col">
       <Navbar />
@@ -373,6 +397,82 @@ export const HomePage: React.FC = () => {
           )}
         </div>
 
+        {/* Search & Filter Toolbar */}
+        {!loading && tournaments.length > 0 && (
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3 rounded-2xl shadow-lg backdrop-blur-md">
+            {/* Status Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  statusFilter === "all"
+                    ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                }`}
+              >
+                <span>ทั้งหมด</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                  {tournaments.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  statusFilter === "active"
+                    ? "bg-emerald-500 text-gray-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>เปิดรับสมัคร & กำลังแข่งขัน</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                  {activeCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter("completed")}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  statusFilter === "completed"
+                    ? "bg-slate-300 text-gray-950 font-black shadow-sm"
+                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>จบการแข่งขันแล้ว</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                  {completedCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-72">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อการแข่งขัน, สถานที่..."
+                className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Tournament Cards Grid (Faithful Bushiroad / TCG Event Card Layout) */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -403,9 +503,29 @@ export const HomePage: React.FC = () => {
               </>
             )}
           </div>
+        ) : filteredTournaments.length === 0 ? (
+          <div className="p-16 text-center rounded-3xl bg-[#0c111c]/60 border border-white/[0.06] max-w-lg mx-auto">
+            <Search className="w-12 h-12 text-gray-500 mx-auto mb-3 opacity-40" />
+            <h3 className="text-base font-bold text-gray-300 mb-1">
+              ไม่พบการแข่งขันที่ตรงกับเงื่อนไข
+            </h3>
+            <p className="text-gray-400 text-xs mb-5">
+              ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองสถานะอื่น
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("all");
+              }}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+            >
+              ล้างตัวกรองทั้งหมด
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 justify-items-center sm:justify-items-stretch">
-            {tournaments.map((tourney, index) => {
+            {filteredTournaments.map((tourney, index) => {
               const isRegistering = tourney.status === "registering";
               const isOngoing = tourney.status === "ongoing";
               const isCompleted = tourney.status === "completed";
@@ -545,20 +665,35 @@ export const HomePage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Right: Admin Action (Delete Tournament) */}
+                      {/* Right: Admin Actions (Edit & Delete Tournament) */}
                       {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTournamentToDelete(tourney);
-                          }}
-                          className="p-1.5 px-2.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/80 text-rose-400 hover:text-rose-200 border border-rose-500/20 hover:border-rose-500/40 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
-                          title="ลบการแข่งขัน"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="text-[11px]">ลบ</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTournamentToEdit(tourney);
+                            }}
+                            className="p-1.5 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
+                            title="แก้ไขข้อมูลการแข่งขัน"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">แก้ไข</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTournamentToDelete(tourney);
+                            }}
+                            className="p-1.5 px-2.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/80 text-rose-400 hover:text-rose-200 border border-rose-500/20 hover:border-rose-500/40 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
+                            title="ลบการแข่งขัน"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">ลบ</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1065,6 +1200,19 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* Modal แก้ไขการแข่งขัน (สำหรับ Admin) */}
+      {isAdmin && (
+        <EditTournamentModal
+          isOpen={Boolean(tournamentToEdit)}
+          onClose={() => setTournamentToEdit(null)}
+          tournament={tournamentToEdit}
+          onSaved={(updated) => {
+            setTournaments((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t))
+            );
+          }}
+        />
       )}
 
       <Footer />
