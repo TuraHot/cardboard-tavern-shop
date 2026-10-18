@@ -15,7 +15,6 @@ import {
   AlertCircle,
   CheckCircle,
   BarChart3,
-  Clock,
 } from "lucide-react";
 
 export const PlayerTournamentPage: React.FC = () => {
