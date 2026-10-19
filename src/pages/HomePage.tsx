@@ -24,6 +24,15 @@ import {
 import { compressImage } from "../utils/compressImage";
 import { useAuth } from "../contexts/AuthContext";
 
+const getTodayDateString = (d: Date = new Date()) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const getDefaultEventDateTime = (d: Date = new Date(), time = "14:30") => {
+  return `${getTodayDateString(d)}T${time}`;
+};
+
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
@@ -39,7 +48,9 @@ export const HomePage: React.FC = () => {
   // Form states for creating tournament
   const [name, setName] = useState("แข่งแวนการ์ด D TH วันเสาร์");
   const [format, setFormat] = useState<TournamentFormat>("Standard TH");
-  const [eventDate, setEventDate] = useState("2026-10-17T14:30");
+  const [eventDate, setEventDate] = useState<string>(() =>
+    getDefaultEventDateTime(),
+  );
   const [entryFee, setEntryFee] = useState<number>(70);
   const [maxPlayers, setMaxPlayers] = useState<number>(20);
   const [storeName, setStoreName] = useState("Cardboard Tavern");
@@ -281,6 +292,7 @@ export const HomePage: React.FC = () => {
       }
 
       setIsModalOpen(false);
+      setEventDate(getDefaultEventDateTime());
       if (createdTournament) {
         navigate(`/admin/tournament/${createdTournament.id}`);
       }
@@ -306,9 +318,10 @@ export const HomePage: React.FC = () => {
   };
 
   const formatEventDate = (dateStr?: string | null) => {
-    if (!dateStr) return "17 ต.ค. 14:30";
+    if (!dateStr) return "-";
     try {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "-";
       const day = d.getDate();
       const thaiMonths = [
         "ม.ค.",
@@ -329,7 +342,7 @@ export const HomePage: React.FC = () => {
       const mins = String(d.getMinutes()).padStart(2, "0");
       return `${day} ${month} ${hours}:${mins}`;
     } catch {
-      return "17 ต.ค. 14:30";
+      return "-";
     }
   };
 
@@ -387,7 +400,10 @@ export const HomePage: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 id="create-tournament-btn"
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setEventDate(getDefaultEventDateTime());
+                  setIsModalOpen(true);
+                }}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 transition-all active:scale-95"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
@@ -783,11 +799,15 @@ export const HomePage: React.FC = () => {
                     <input
                       type="date"
                       required
-                      value={eventDate ? eventDate.split("T")[0] : ""}
+                      value={
+                        eventDate
+                          ? eventDate.split("T")[0]
+                          : getTodayDateString()
+                      }
                       onChange={(e) => {
                         const datePart = e.target.value;
                         const timePart =
-                          eventDate?.split("T")[1]?.slice(0, 5) || "13:00";
+                          eventDate?.split("T")[1]?.slice(0, 5) || "14:30";
                         setEventDate(datePart ? `${datePart}T${timePart}` : "");
                       }}
                       style={{ colorScheme: "dark" }}
@@ -798,16 +818,16 @@ export const HomePage: React.FC = () => {
                     <div className="flex items-center gap-1.5 bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/30">
                       {/* เลือกชั่วโมง (00 - 23) */}
                       <select
-                        value={eventDate?.split("T")[1]?.split(":")[0] || "13"}
+                        value={eventDate?.split("T")[1]?.split(":")[0] || "14"}
                         onChange={(e) => {
                           const datePart =
                             eventDate?.split("T")[0] ||
-                            new Date().toISOString().split("T")[0];
+                            getTodayDateString();
                           const minutePart =
                             eventDate
                               ?.split("T")[1]
                               ?.split(":")[1]
-                              ?.slice(0, 2) || "00";
+                              ?.slice(0, 2) || "30";
                           setEventDate(
                             `${datePart}T${e.target.value}:${minutePart}`,
                           );
@@ -835,14 +855,14 @@ export const HomePage: React.FC = () => {
                           eventDate
                             ?.split("T")[1]
                             ?.split(":")[1]
-                            ?.slice(0, 2) || "00"
+                            ?.slice(0, 2) || "30"
                         }
                         onChange={(e) => {
                           const datePart =
                             eventDate?.split("T")[0] ||
-                            new Date().toISOString().split("T")[0];
+                            getTodayDateString();
                           const hourPart =
-                            eventDate?.split("T")[1]?.split(":")[0] || "13";
+                            eventDate?.split("T")[1]?.split(":")[0] || "14";
                           setEventDate(
                             `${datePart}T${hourPart}:${e.target.value}`,
                           );

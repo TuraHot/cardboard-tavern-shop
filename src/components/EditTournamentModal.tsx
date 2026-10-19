@@ -25,6 +25,25 @@ interface EditTournamentModalProps {
   onSaved: (updated: Tournament) => void;
 }
 
+const toLocalDatetimeInput = (dateStr?: string | null) => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (!dateStr) {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T14:30`;
+  }
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+      const now = new Date();
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T14:30`;
+    }
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T14:30`;
+  }
+};
+
 export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   isOpen,
   onClose,
@@ -55,7 +74,7 @@ export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
     if (tournament && isOpen) {
       setName(tournament.name || '');
       setFormat(tournament.format || 'Standard TH');
-      setEventDate(tournament.event_date ? tournament.event_date.substring(0, 16) : '');
+      setEventDate(toLocalDatetimeInput(tournament.event_date));
       setEntryFee(tournament.entry_fee ?? 70);
       setMaxPlayers(tournament.max_players ?? 20);
       setMaxRounds(tournament.max_rounds ?? 4);
