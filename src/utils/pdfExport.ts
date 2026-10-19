@@ -282,12 +282,11 @@ function getBaseStyles(): string {
       font-weight: 800;
     }
 
-    .rank-badge {
-      display: inline-block;
-      min-width: 24px;
+    .rank-cell {
       font-weight: 800;
-      font-size: 12px;
+      font-size: 13px;
       text-align: center;
+      color: #0f172a;
     }
 
     .dropped-text {
@@ -379,68 +378,19 @@ export function exportPairingsPdf({
       const p2 = m.player2_id ? playerMap.get(m.player2_id) : null;
       const isBye = m.is_bye || m.is_Bye || !p2;
 
-      // P1 details
-      const p1NationCfg = p1 ? getNationConfig(p1.nation) : null;
-      const p1BossThai = p1?.deck_boss ? getBossThaiName(p1.deck_boss) : '';
-      const p1DeckStr = [
-        p1NationCfg?.name ? `${p1NationCfg.name} (${p1NationCfg.thaiName})` : '',
-        p1BossThai ? p1BossThai : p1?.deck_boss || '',
-      ]
-        .filter(Boolean)
-        .join(' • ');
-
-      // P2 details
-      const p2NationCfg = p2 ? getNationConfig(p2.nation) : null;
-      const p2BossThai = p2?.deck_boss ? getBossThaiName(p2.deck_boss) : '';
-      const p2DeckStr = [
-        p2NationCfg?.name ? `${p2NationCfg.name} (${p2NationCfg.thaiName})` : '',
-        p2BossThai ? p2BossThai : p2?.deck_boss || '',
-      ]
-        .filter(Boolean)
-        .join(' • ');
-
-      let resultHtml = '<div class="score-box">[ &nbsp; &nbsp; ] - [ &nbsp; &nbsp; ]</div>';
-      if (isBye) {
-        resultHtml = '<span class="winner-badge">✓ ชนะ BYE</span>';
-      } else if (m.status === 'completed') {
-        if (m.is_double_loss) {
-          resultHtml = '<span style="color:#dc2626; font-weight:700;">แพ้คู่</span>';
-        } else if (m.winner_id === m.player1_id) {
-          resultHtml = `<span class="winner-badge">✓ ${p1?.name || 'P1'} ชนะ</span>`;
-        } else if (m.winner_id === p2?.id) {
-          resultHtml = `<span class="winner-badge">✓ ${p2?.name || 'P2'} ชนะ</span>`;
-        } else {
-          resultHtml = '<span class="winner-badge">เสมอ</span>';
-        }
-      }
-
       return `
         <tr>
           <td class="text-center table-num">${m.table_number}</td>
           <td>
-            <div class="player-name">
-              <span class="lucky-pill">🍀 #${p1?.lucky_draw_number ?? '-'}</span>
-              <span>${p1?.name ?? 'ไม่พบข้อมูล'}</span>
-            </div>
-            ${p1DeckStr ? `<div class="deck-info">${p1DeckStr}</div>` : ''}
+            <span class="player-name">${p1?.name ?? 'ไม่พบข้อมูล'}</span>
           </td>
           <td class="text-center vs-badge">VS</td>
           <td>
             ${
               isBye
                 ? '<span class="bye-badge">ชนะบาย (BYE)</span>'
-                : `
-                <div class="player-name">
-                  <span class="lucky-pill">🍀 #${p2?.lucky_draw_number ?? '-'}</span>
-                  <span>${p2?.name ?? 'ไม่พบข้อมูล'}</span>
-                </div>
-                ${p2DeckStr ? `<div class="deck-info">${p2DeckStr}</div>` : ''}
-              `
+                : `<span class="player-name">${p2?.name ?? 'ไม่พบข้อมูล'}</span>`
             }
-          </td>
-          <td class="text-center">${resultHtml}</td>
-          <td class="sign-line">
-            ${isBye ? '-' : 'P1: _____________<br/>P2: _____________'}
           </td>
         </tr>
       `;
@@ -480,16 +430,14 @@ export function exportPairingsPdf({
       <table>
         <thead>
           <tr>
-            <th class="text-center" style="width: 55px;">โต๊ะ</th>
-            <th style="width: 32%;">ผู้เล่น 1 (Player 1)</th>
-            <th class="text-center" style="width: 35px;">VS</th>
-            <th style="width: 32%;">ผู้เล่น 2 (Player 2)</th>
-            <th class="text-center" style="width: 15%;">ผลการแข่งขัน</th>
-            <th style="width: 15%;">ลายเซ็นผู้เล่น</th>
+            <th class="text-center" style="width: 70px;">โต๊ะ</th>
+            <th style="width: 44%;">ผู้เล่น 1</th>
+            <th class="text-center" style="width: 50px;">VS</th>
+            <th style="width: 44%;">ผู้เล่น 2</th>
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="6" class="text-center" style="padding: 24px; color:#94a3b8;">ไม่พบคู่แข่งขันในรอบนี้</td></tr>'}
+          ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="4" class="text-center" style="padding: 24px; color:#94a3b8;">ไม่พบคู่แข่งขันในรอบนี้</td></tr>'}
         </tbody>
       </table>
 
@@ -536,8 +484,7 @@ export function exportStandingsPdf({
 
       return `
         <tr class="${rankClass}">
-          <td class="text-center rank-badge">${medalStr}${rank}</td>
-          <td class="text-center"><span class="lucky-pill">🍀 #${p.lucky_draw_number}</span></td>
+          <td class="text-center rank-cell">${medalStr}${rank}</td>
           <td>
             <span class="player-name">
               ${p.name}
@@ -588,10 +535,9 @@ export function exportStandingsPdf({
       <table>
         <thead>
           <tr>
-            <th class="text-center" style="width: 55px;">อันดับ</th>
-            <th class="text-center" style="width: 65px;">🍀 #</th>
-            <th style="width: 25%;">ชื่อผู้เล่น</th>
-            <th style="width: 30%;">ประเทศ / แวนการ์ดหลัก</th>
+            <th class="text-center" style="width: 60px;">อันดับ</th>
+            <th style="width: 28%;">ชื่อผู้เล่น</th>
+            <th style="width: 32%;">ประเทศ / แวนการ์ดหลัก</th>
             <th class="text-center" style="width: 60px;">แต้ม</th>
             <th class="text-center" style="width: 70px;">ชนะ-แพ้</th>
             <th class="text-center" style="width: 70px;" title="Opponents' Match Win Rate">OMW</th>
@@ -599,7 +545,7 @@ export function exportStandingsPdf({
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="8" class="text-center" style="padding: 24px; color:#94a3b8;">ยังไม่มีข้อมูลคะแนน</td></tr>'}
+          ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="7" class="text-center" style="padding: 24px; color:#94a3b8;">ยังไม่มีข้อมูลคะแนน</td></tr>'}
         </tbody>
       </table>
 

@@ -839,13 +839,16 @@ export const AdminTournamentPage: React.FC = () => {
                   setSelectedMatch(m);
                   setIsReportOpen(true);
                 }}
-                onExportPdf={() =>
-                  exportPairingsPdf({
-                    tournament,
-                    roundNumber: selectedRoundFilter,
-                    matches,
-                    players,
-                  })
+                onExportPdf={
+                  tournament.current_round > 0 && displayedMatches.length > 0
+                    ? () =>
+                        exportPairingsPdf({
+                          tournament,
+                          roundNumber: selectedRoundFilter,
+                          matches,
+                          players,
+                        })
+                    : undefined
                 }
               />
             </div>
@@ -1013,11 +1016,14 @@ export const AdminTournamentPage: React.FC = () => {
           <div>
             <StandingsTable
               standings={standings}
-              onExportPdf={() =>
-                exportStandingsPdf({
-                  tournament,
-                  standings,
-                })
+              onExportPdf={
+                tournament.status === "completed"
+                  ? () =>
+                      exportStandingsPdf({
+                        tournament,
+                        standings,
+                      })
+                  : undefined
               }
             />
           </div>

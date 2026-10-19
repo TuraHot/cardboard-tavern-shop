@@ -9,7 +9,6 @@ import { PairingsList } from "../components/PairingsList";
 import { StandingsTable } from "../components/StandingsTable";
 import { MetaAnalytics } from "../components/MetaAnalytics";
 import { Footer } from "../components/Footer";
-import { exportPairingsPdf, exportStandingsPdf } from "../utils/pdfExport";
 import {
   Swords,
   Trophy,
@@ -308,14 +307,6 @@ export const PlayerTournamentPage: React.FC = () => {
                   matches={currentRoundMatches}
                   players={players}
                   canReport={false}
-                  onExportPdf={() =>
-                    exportPairingsPdf({
-                      tournament,
-                      roundNumber: tournament.current_round,
-                      matches,
-                      players,
-                    })
-                  }
                 />
               </div>
             )}
@@ -328,12 +319,6 @@ export const PlayerTournamentPage: React.FC = () => {
             <StandingsTable
               standings={standings}
               showNationAndBoss={tournament.status === "completed"}
-              onExportPdf={() =>
-                exportStandingsPdf({
-                  tournament,
-                  standings,
-                })
-              }
             />
           </div>
         )}
