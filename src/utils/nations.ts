@@ -11,6 +11,7 @@ export interface NationConfig {
   iconSymbol: string;
   abbName: string;
   iconUrl?: string;
+  fallbackIconUrl?: string;
   colorCode: string;
 }
 
@@ -34,6 +35,11 @@ export function getNationIconUrl(abbName: string): string {
   return data?.publicUrl || '';
 }
 
+export function getLocalNationIconUrl(abbName: string): string {
+  if (!abbName) return '';
+  return `/images/nations/Icon_${abbName}.webp`;
+}
+
 export const VANGUARD_NATIONS: NationConfig[] = [
   {
     name: 'Dragon Empire',
@@ -46,6 +52,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '🐉',
     abbName: 'DE',
     iconUrl: getNationIconUrl('DE'),
+    fallbackIconUrl: getLocalNationIconUrl('DE'),
   },
   {
     name: 'Dark States',
@@ -58,6 +65,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '🌑',
     abbName: 'DS',
     iconUrl: getNationIconUrl('DS'),
+    fallbackIconUrl: getLocalNationIconUrl('DS'),
   },
   {
     name: 'Brandt Gate',
@@ -70,6 +78,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '🛸',
     abbName: 'BG',
     iconUrl: getNationIconUrl('BG'),
+    fallbackIconUrl: getLocalNationIconUrl('BG'),
   },
   {
     name: 'Keter Sanctuary',
@@ -82,6 +91,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '⚔️',
     abbName: 'KS',
     iconUrl: getNationIconUrl('KS'),
+    fallbackIconUrl: getLocalNationIconUrl('KS'),
   },
   {
     name: 'Stoicheia',
@@ -94,6 +104,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '🌿',
     abbName: 'ST',
     iconUrl: getNationIconUrl('ST'),
+    fallbackIconUrl: getLocalNationIconUrl('ST'),
   },
   {
     name: 'Lyrical Monasterio',
@@ -106,6 +117,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '✨',
     abbName: 'LM',
     iconUrl: getNationIconUrl('LM'),
+    fallbackIconUrl: getLocalNationIconUrl('LM'),
   },
   {
     name: 'Super Sentai',
@@ -118,6 +130,7 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     iconSymbol: '🦸',
     abbName: 'SS',
     iconUrl: getNationIconUrl('SS'),
+    fallbackIconUrl: getLocalNationIconUrl('SS'),
   }
 ];
 
@@ -143,6 +156,25 @@ export function syncNationsFromDb(
   }
 }
 
+let isNationsAutoFetching = false;
+export async function ensureNationsLoaded() {
+  if (isNationsAutoFetching) return;
+  isNationsAutoFetching = true;
+  try {
+    const { data } = await supabase.from('nations').select('name_en, color_code, logo_url, name_th');
+    if (data) {
+      syncNationsFromDb(data);
+    }
+  } catch (err) {
+    console.warn('Failed to fetch nations:', err);
+  } finally {
+    isNationsAutoFetching = false;
+  }
+}
+
+// Auto load nations on startup
+ensureNationsLoaded();
+
 export function getNationConfig(nation: string): NationConfig {
   const normalized = (nation || '').toLowerCase().trim();
   const dbEntry = nationDbMap.get(normalized);
@@ -157,11 +189,16 @@ export function getNationConfig(nation: string): NationConfig {
 
   if (found) {
     const finalColorCode = dbEntry?.color_code || found.colorCode;
-    const finalLogoUrl = dbEntry?.logo_url || found.iconUrl || getNationIconUrl(found.abbName);
+    const supabaseUrl = getNationIconUrl(found.abbName);
+    const localUrl = getLocalNationIconUrl(found.abbName);
+    const rawUrl = dbEntry?.logo_url || supabaseUrl;
+    const finalLogoUrl = rawUrl ? rawUrl.replace('/object/sign/', '/object/public/') : supabaseUrl;
+
     return {
       ...found,
       colorCode: finalColorCode,
       iconUrl: finalLogoUrl,
+      fallbackIconUrl: localUrl,
     };
   }
 

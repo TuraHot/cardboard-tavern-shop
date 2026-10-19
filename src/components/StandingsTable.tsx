@@ -31,8 +31,8 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
 
     if (showNationAndBoss) {
       return (
-        s.player.nation.toLowerCase().includes(lower) ||
-        (s.player.deck_boss && s.player.deck_boss.toLowerCase().includes(lower))
+        (s.player.nation?.toLowerCase().includes(lower) ?? false) ||
+        (s.player.deck_boss?.toLowerCase().includes(lower) ?? false)
       );
     }
     return false;

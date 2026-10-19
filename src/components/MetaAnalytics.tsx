@@ -1,13 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player } from '../types';
-import { VANGUARD_NATIONS, getNationConfig, hexToRgba } from '../utils/nations';
+import { VANGUARD_NATIONS, getNationConfig, hexToRgba, NationConfig, ensureNationsLoaded } from '../utils/nations';
+import { getBossThaiName, ensureBossesLoaded } from '../utils/bosses';
 import { BarChart3, Shield, Layers } from 'lucide-react';
 
 interface MetaAnalyticsProps {
   players: Player[];
 }
 
+const NationIcon: React.FC<{ config: NationConfig; className?: string }> = ({
+  config,
+  className = 'w-4 h-4',
+}) => {
+  const [imgSrc, setImgSrc] = useState<string | undefined>(
+    config.iconUrl || config.fallbackIconUrl
+  );
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(config.iconUrl || config.fallbackIconUrl);
+    setHasError(false);
+  }, [config.iconUrl, config.fallbackIconUrl]);
+
+  const handleImgError = () => {
+    if (imgSrc !== config.fallbackIconUrl && config.fallbackIconUrl) {
+      setImgSrc(config.fallbackIconUrl);
+    } else {
+      setHasError(true);
+    }
+  };
+
+  if (imgSrc && !hasError) {
+    return (
+      <img
+        src={imgSrc}
+        alt={config.name}
+        className={`${className} object-contain shrink-0 drop-shadow`}
+        loading="eager"
+        onError={handleImgError}
+      />
+    );
+  }
+
+  return <span className="text-xs leading-none shrink-0">{config.iconSymbol}</span>;
+};
+
 export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
+  const [, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    Promise.all([ensureBossesLoaded(), ensureNationsLoaded()]).then(() => {
+      setRefreshKey((prev) => prev + 1);
+    });
+  }, []);
+
   const activePlayers = players.filter((p) => !p.is_dropped);
   const total = activePlayers.length;
 
@@ -26,17 +72,35 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
     .filter(([_, count]) => count > 0)
     .sort((a, b) => b[1] - a[1]);
 
-  // Calculate top deck bosses
-  const bossCounts: Record<string, number> = {};
+  // Calculate top deck bosses (grouped by Thai name)
+  interface BossStat {
+    thaiName: string;
+    rawName: string;
+    nation: string;
+    count: number;
+  }
+
+  const bossStatsMap: Record<string, BossStat> = {};
+
   for (const p of activePlayers) {
     if (p.deck_boss && p.deck_boss.trim()) {
-      const boss = p.deck_boss.trim();
-      bossCounts[boss] = (bossCounts[boss] || 0) + 1;
+      const raw = p.deck_boss.trim();
+      const thai = getBossThaiName(raw) || raw;
+
+      if (!bossStatsMap[thai]) {
+        bossStatsMap[thai] = {
+          thaiName: thai,
+          rawName: raw,
+          nation: p.nation || '',
+          count: 0,
+        };
+      }
+      bossStatsMap[thai].count += 1;
     }
   }
 
-  const sortedBosses = Object.entries(bossCounts)
-    .sort((a, b) => b[1] - a[1])
+  const sortedBosses = Object.values(bossStatsMap)
+    .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
   if (total === 0) {
@@ -73,17 +137,21 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
               const percent = Math.round((count / total) * 100);
 
               return (
-                <div key={nationName} className="space-y-1">
+                <div key={nationName} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <span className="font-medium text-gray-300 flex items-center gap-1.5">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                    <span className="font-medium text-gray-200 flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center p-0.5 border shrink-0 transition-transform"
                         style={{
-                          backgroundColor: config.colorCode,
-                          boxShadow: `0 0 8px ${hexToRgba(config.colorCode, 0.7)}`,
+                          backgroundColor: hexToRgba(config.colorCode, 0.15),
+                          borderColor: hexToRgba(config.colorCode, 0.4),
+                          boxShadow: `0 0 10px ${hexToRgba(config.colorCode, 0.25)}`,
                         }}
-                      />
-                      {config.name}
+                      >
+                        <NationIcon config={config} className="w-4.5 h-4.5" />
+                      </div>
+                      <span className="text-white font-semibold">{config.name}</span>
+                      <span className="text-gray-400 text-xs font-light">({config.thaiName})</span>
                     </span>
                     <span className="text-gray-400 font-mono">
                       {count} คน ({percent}%)
@@ -114,25 +182,46 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
 
           {sortedBosses.length > 0 ? (
             <div className="space-y-2.5">
-              {sortedBosses.map(([bossName, count], idx) => {
-                const percent = Math.round((count / total) * 100);
+              {sortedBosses.map((boss, idx) => {
+                const percent = Math.round((boss.count / total) * 100);
+                const nationConfig = boss.nation ? getNationConfig(boss.nation) : null;
+
                 return (
                   <div
-                    key={bossName}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-gray-850 border border-gray-800 hover:border-gray-700 transition-colors"
+                    key={boss.thaiName}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-gray-850/80 border border-gray-800 hover:border-gray-700 transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-md bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-400">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-5 h-5 rounded-md bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-400 shrink-0">
                         #{idx + 1}
                       </span>
-                      <span className="font-medium text-sm text-white">🎴 {bossName}</span>
+                      {nationConfig && (
+                        <div
+                          className="w-6 h-6 rounded-lg flex items-center justify-center p-0.5 border shrink-0"
+                          style={{
+                            backgroundColor: hexToRgba(nationConfig.colorCode, 0.15),
+                            borderColor: hexToRgba(nationConfig.colorCode, 0.35),
+                          }}
+                          title={`${nationConfig.name} (${nationConfig.thaiName})`}
+                        >
+                          <NationIcon config={nationConfig} className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span
+                          className="font-semibold text-sm text-white truncate"
+                          title={boss.rawName !== boss.thaiName ? `${boss.rawName} (${boss.thaiName})` : boss.thaiName}
+                        >
+                          {boss.thaiName}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono font-semibold">
-                        {count} คน
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono font-semibold">
+                        {boss.count} คน
                       </span>
-                      <span className="text-xs text-gray-500 font-mono">
+                      <span className="text-xs text-gray-400 font-mono">
                         {percent}%
                       </span>
                     </div>

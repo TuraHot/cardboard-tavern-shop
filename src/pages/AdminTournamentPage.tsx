@@ -27,6 +27,7 @@ import { MetaAnalytics } from "../components/MetaAnalytics";
 import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
 import { EditTournamentModal } from "../components/EditTournamentModal";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { Footer } from "../components/Footer";
 import {
   Users,
@@ -72,6 +73,12 @@ export const AdminTournamentPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
   const [isEditTournamentOpen, setIsEditTournamentOpen] = useState(false);
+
+  // Delete & Drop player confirmation modal states
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
+  const [playerToToggleDrop, setPlayerToToggleDrop] = useState<Player | null>(null);
+  const [isTogglingDrop, setIsTogglingDrop] = useState(false);
 
   // Nations & Bosses state
   const [nations, setNations] = useState<NationRow[]>([]);
@@ -369,10 +376,6 @@ export const AdminTournamentPage: React.FC = () => {
   const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !formName.trim()) return;
-    if (!formNation) {
-      alert("กรุณาเลือกประเทศ");
-      return;
-    }
 
     try {
       setSubmittingPlayer(true);
@@ -381,9 +384,11 @@ export const AdminTournamentPage: React.FC = () => {
           ? Math.max(...players.map((p) => p.lucky_draw_number || 0)) + 1
           : 1;
 
-      const matchedNation = nations.find(
-        (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
-      );
+      const matchedNation = formNation
+        ? nations.find(
+            (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
+          )
+        : null;
       const matchedBoss = bosses.find(
         (b) =>
           formDeckBoss.trim() &&
@@ -393,7 +398,7 @@ export const AdminTournamentPage: React.FC = () => {
       const { error } = await supabase.from("players").insert({
         tournament_id: id,
         name: formName.trim(),
-        nation: formNation,
+        nation: formNation || "",
         deck_boss: formDeckBoss.trim() || null,
         nation_id: matchedNation?.id || null,
         boss_id: matchedBoss?.id || null,
@@ -418,16 +423,14 @@ export const AdminTournamentPage: React.FC = () => {
   const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer || !formName.trim()) return;
-    if (!formNation) {
-      alert("กรุณาเลือกประเทศ");
-      return;
-    }
 
     try {
       setSubmittingPlayer(true);
-      const matchedNation = nations.find(
-        (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
-      );
+      const matchedNation = formNation
+        ? nations.find(
+            (n) => n.name_en.toLowerCase() === formNation.toLowerCase(),
+          )
+        : null;
       const matchedBoss = bosses.find(
         (b) =>
           formDeckBoss.trim() &&
@@ -438,7 +441,7 @@ export const AdminTournamentPage: React.FC = () => {
         .from("players")
         .update({
           name: formName.trim(),
-          nation: formNation,
+          nation: formNation || "",
           deck_boss: formDeckBoss.trim() || null,
           nation_id: matchedNation?.id || null,
           boss_id: matchedBoss?.id || null,
@@ -456,25 +459,42 @@ export const AdminTournamentPage: React.FC = () => {
     }
   };
 
-  const handleToggleDropPlayer = async (player: Player) => {
-    const action = player.is_dropped ? "กลับเข้าแข่ง" : "ดรอป (ออกจากการแข่ง)";
-    if (!confirm(`ต้องการให้ผู้เล่น "${player.name}" ${action} ใช่หรือไม่?`))
-      return;
+  const handleConfirmToggleDropPlayer = async () => {
+    if (!playerToToggleDrop) return;
+    try {
+      setIsTogglingDrop(true);
+      const { error } = await supabase
+        .from("players")
+        .update({ is_dropped: !playerToToggleDrop.is_dropped })
+        .eq("id", playerToToggleDrop.id);
 
-    await supabase
-      .from("players")
-      .update({ is_dropped: !player.is_dropped })
-      .eq("id", player.id);
-
-    await fetchData();
+      if (error) throw error;
+      setPlayerToToggleDrop(null);
+      await fetchData();
+    } catch (err: any) {
+      alert("ไม่สามารถเปลี่ยนสถานะผู้เล่นได้: " + (err.message || ""));
+    } finally {
+      setIsTogglingDrop(false);
+    }
   };
 
-  const handleDeletePlayer = async (player: Player) => {
-    if (!confirm(`ต้องการลบผู้เล่น "${player.name}" ออกจากระบบใช่หรือไม่?`))
-      return;
+  const handleConfirmDeletePlayer = async () => {
+    if (!playerToDelete) return;
+    try {
+      setIsDeletingPlayer(true);
+      const { error } = await supabase
+        .from("players")
+        .delete()
+        .eq("id", playerToDelete.id);
 
-    await supabase.from("players").delete().eq("id", player.id);
-    await fetchData();
+      if (error) throw error;
+      setPlayerToDelete(null);
+      await fetchData();
+    } catch (err: any) {
+      alert("ไม่สามารถลบผู้เล่นได้: " + (err.message || ""));
+    } finally {
+      setIsDeletingPlayer(false);
+    }
   };
 
   const handleDeleteTournament = async () => {
@@ -554,6 +574,14 @@ export const AdminTournamentPage: React.FC = () => {
     { length: Math.max(1, totalRoundsPlayed) },
     (_, i) => i + 1,
   );
+
+  const currentNationObj = formNation
+    ? nations.find((n) => n.name_en.toLowerCase() === formNation.toLowerCase())
+    : null;
+
+  const currentNationBosses = currentNationObj
+    ? bosses.filter((b) => b.nation_id === currentNationObj.id)
+    : [];
 
   return (
     <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col">
@@ -933,7 +961,7 @@ export const AdminTournamentPage: React.FC = () => {
                               </button>
 
                               <button
-                                onClick={() => handleToggleDropPlayer(p)}
+                                onClick={() => setPlayerToToggleDrop(p)}
                                 className={`p-1.5 rounded-lg transition-colors border ${
                                   p.is_dropped
                                     ? "bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-500/30"
@@ -952,7 +980,7 @@ export const AdminTournamentPage: React.FC = () => {
 
                               {tournament.status === "registering" && (
                                 <button
-                                  onClick={() => handleDeletePlayer(p)}
+                                  onClick={() => setPlayerToDelete(p)}
                                   className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 transition-colors"
                                   title="ลบผู้เล่น"
                                 >
@@ -1013,10 +1041,9 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ (Nation)
+                  ประเทศ (Nation) <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                 </label>
                 <select
-                  required
                   value={formNation}
                   onChange={(e) => {
                     setFormNation(e.target.value as VanguardNation | "");
@@ -1050,88 +1077,35 @@ export const AdminTournamentPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-300">
-                    ชื่อแวนการ์ดหลัก
+                    ชื่อแวนการ์ดหลัก <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                   </label>
-                  {formNation && bosses.filter(
-                    (b) =>
-                      nations.find(
-                        (n) =>
-                          n.name_en.toLowerCase() === formNation.toLowerCase(),
-                      )?.id === b.nation_id,
-                  ).length > 0 && (
+                  {formNation && currentNationBosses.length > 0 && (
                     <span className="text-[11px] text-amber-300/80">
-                      พบแวนการ์ดหลัก{" "}
-                      {
-                        bosses.filter(
-                          (b) =>
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        ).length
-                      }{" "}
-                      ตัวในเนชั่นนี้
+                      พบ {currentNationBosses.length} แวนการ์ดหลัก
                     </span>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  {formNation && bosses.filter(
-                    (b) =>
-                      nations.find(
-                        (n) =>
-                          n.name_en.toLowerCase() === formNation.toLowerCase(),
-                      )?.id === b.nation_id,
-                  ).length > 0 && (
-                    <select
-                      value={
-                        bosses.some(
-                          (b) =>
-                            b.name_en === formDeckBoss &&
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        )
-                          ? formDeckBoss
-                          : formDeckBoss
-                            ? "__custom__"
-                            : ""
-                      }
-                      onChange={(e) => {
-                        if (e.target.value !== "__custom__") {
-                          setFormDeckBoss(e.target.value);
-                        }
-                      }}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
-                    >
+                <select
+                  value={formDeckBoss}
+                  onChange={(e) => setFormDeckBoss(e.target.value)}
+                  disabled={!formNation || currentNationBosses.length === 0}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {!formNation ? (
+                    <option value="">-- กรุณาเลือกประเทศก่อน --</option>
+                  ) : currentNationBosses.length === 0 ? (
+                    <option value="">-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --</option>
+                  ) : (
+                    <>
                       <option value="">-- เลือกแวนการ์ดหลัก --</option>
-                      {bosses
-                        .filter(
-                          (b) =>
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        )
-                        .map((b) => (
-                          <option key={b.id} value={b.name_en}>
-                            {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
-                          </option>
-                        ))}
-                      <option value="__custom__">✏️ พิมพ์ระบุชื่อเอง...</option>
-                    </select>
+                      {currentNationBosses.map((b) => (
+                        <option key={b.id} value={b.name_en}>
+                          {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
+                        </option>
+                      ))}
+                    </>
                   )}
-                  <input
-                    type="text"
-                    value={formDeckBoss}
-                    onChange={(e) => setFormDeckBoss(e.target.value)}
-                    placeholder="เช่น Dragonic Overlord หรือเลือกจากด้านบน"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
-                  />
-                </div>
+                </select>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -1178,10 +1152,9 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ (Nation)
+                  ประเทศ (Nation) <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                 </label>
                 <select
-                  required
                   value={formNation}
                   onChange={(e) => {
                     setFormNation(e.target.value as VanguardNation | "");
@@ -1215,93 +1188,41 @@ export const AdminTournamentPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-300">
-                    ชื่อแวนการ์ดหลัก
+                    ชื่อแวนการ์ดหลัก <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                   </label>
-                  {bosses.filter(
-                    (b) =>
-                      nations.find(
-                        (n) =>
-                          n.name_en.toLowerCase() === formNation.toLowerCase(),
-                      )?.id === b.nation_id,
-                  ).length > 0 && (
+                  {formNation && currentNationBosses.length > 0 && (
                     <span className="text-[11px] text-amber-300/80">
-                      พบแวนการ์ดหลัก{" "}
-                      {
-                        bosses.filter(
-                          (b) =>
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        ).length
-                      }{" "}
-                      ตัวในเนชั่นนี้
+                      พบ {currentNationBosses.length} แวนการ์ดหลัก
                     </span>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  {bosses.filter(
-                    (b) =>
-                      nations.find(
-                        (n) =>
-                          n.name_en.toLowerCase() === formNation.toLowerCase(),
-                      )?.id === b.nation_id,
-                  ).length > 0 && (
-                    <select
-                      value={
-                        bosses.some(
-                          (b) =>
-                            b.name_en === formDeckBoss &&
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        )
-                          ? formDeckBoss
-                          : formDeckBoss
-                            ? "__custom__"
-                            : ""
-                      }
-                      onChange={(e) => {
-                        if (e.target.value !== "__custom__") {
-                          setFormDeckBoss(e.target.value);
-                        }
-                      }}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
-                    >
-                      <option value="">
-                        -- เลือกจากฐานข้อมูลแวนการ์ดหลัก (
-                        {
-                          bosses.filter(
-                            (b) =>
-                              nations.find(
-                                (n) =>
-                                  n.name_en.toLowerCase() ===
-                                  formNation.toLowerCase(),
-                              )?.id === b.nation_id,
-                          ).length
-                        }{" "}
-                        ตัว) --
-                      </option>
-                      {bosses
-                        .filter(
-                          (b) =>
-                            nations.find(
-                              (n) =>
-                                n.name_en.toLowerCase() ===
-                                formNation.toLowerCase(),
-                            )?.id === b.nation_id,
-                        )
-                        .map((b) => (
-                          <option key={b.id} value={b.name_en}>
-                            {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
-                          </option>
-                        ))}
-                    </select>
+                <select
+                  value={formDeckBoss}
+                  onChange={(e) => setFormDeckBoss(e.target.value)}
+                  disabled={!formNation || currentNationBosses.length === 0}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {!formNation ? (
+                    <option value="">-- กรุณาเลือกประเทศก่อน --</option>
+                  ) : currentNationBosses.length === 0 ? (
+                    <option value="">-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --</option>
+                  ) : (
+                    <>
+                      <option value="">-- เลือกแวนการ์ดหลัก --</option>
+                      {currentNationBosses.map((b) => (
+                        <option key={b.id} value={b.name_en}>
+                          {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
+                        </option>
+                      ))}
+                      {formDeckBoss &&
+                        !currentNationBosses.some(
+                          (b) => b.name_en === formDeckBoss,
+                        ) && (
+                          <option value={formDeckBoss}>{formDeckBoss}</option>
+                        )}
+                    </>
                   )}
-                </div>
+                </select>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -1382,6 +1303,93 @@ export const AdminTournamentPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal: ยืนยันลบผู้เล่น */}
+      <ConfirmModal
+        isOpen={!!playerToDelete}
+        onClose={() => !isDeletingPlayer && setPlayerToDelete(null)}
+        onConfirm={handleConfirmDeletePlayer}
+        isLoading={isDeletingPlayer}
+        variant="danger"
+        title="ยืนยันการลบผู้เข้าแข่งขัน"
+        confirmText="ยืนยันลบผู้เล่น"
+        cancelText="ยกเลิก"
+        icon={<Trash2 className="w-5 h-5 text-rose-400" />}
+        warningText="ข้อมูลการเข้าร่วมและสถิติของผู้เล่นนี้จะถูกลบออกจากทัวร์นาเมนต์ถาวร ไม่สามารถกู้คืนได้"
+        description="คุณแน่ใจหรือไม่ว่าต้องการลบผู้เล่นคนนี้ออกจากการแข่งขัน?"
+      >
+        {playerToDelete && (
+          <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] flex items-center justify-between gap-3 shadow-inner">
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold">
+                🍀 #{playerToDelete.lucky_draw_number}
+              </span>
+              <span className="font-bold text-base text-white tracking-tight">
+                {playerToDelete.name}
+              </span>
+            </div>
+            <NationBadge
+              nation={playerToDelete.nation}
+              deckBoss={playerToDelete.deck_boss}
+              size="sm"
+            />
+          </div>
+        )}
+      </ConfirmModal>
+
+      {/* Modal: ยืนยันดรอป / นำผู้เล่นกลับเข้าแข่ง */}
+      <ConfirmModal
+        isOpen={!!playerToToggleDrop}
+        onClose={() => !isTogglingDrop && setPlayerToToggleDrop(null)}
+        onConfirm={handleConfirmToggleDropPlayer}
+        isLoading={isTogglingDrop}
+        variant={playerToToggleDrop?.is_dropped ? "success" : "warning"}
+        title={
+          playerToToggleDrop?.is_dropped
+            ? "ยืนยันนำผู้เล่นกลับเข้าแข่ง"
+            : "ยืนยันการดรอปผู้เล่น (ออกจากการแข่ง)"
+        }
+        confirmText={
+          playerToToggleDrop?.is_dropped ? "นำกลับเข้าแข่ง" : "ยืนยันดรอปผู้เล่น"
+        }
+        cancelText="ยกเลิก"
+        icon={
+          playerToToggleDrop?.is_dropped ? (
+            <UserCheck className="w-5 h-5 text-emerald-400" />
+          ) : (
+            <UserX className="w-5 h-5 text-amber-400" />
+          )
+        }
+        warningText={
+          playerToToggleDrop?.is_dropped
+            ? "ผู้เล่นจะถูกนำมาร่วมจับคู่แข่งขันในรอบถัดไปตามปกติ"
+            : "ผู้เล่นจะไม่ถูกนำมาร่วมจับคู่แข่งขันในรอบถัดไป แต่คะแนนในรอบที่ผ่านมาจะยังคงถูกบันทึกไว้"
+        }
+        description={
+          <span>
+            คุณแน่ใจหรือไม่ว่าต้องการ{playerToToggleDrop?.is_dropped ? "นำผู้เล่นกลับเข้าสู่การแข่งขัน" : "ตั้งค่าให้ผู้เล่นออกจากการแข่งขัน"}?
+          </span>
+        }
+      >
+        {playerToToggleDrop && (
+          <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] flex items-center justify-between gap-3 shadow-inner">
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold">
+                🍀 #{playerToToggleDrop.lucky_draw_number}
+              </span>
+              <span className="font-bold text-base text-white tracking-tight">
+                {playerToToggleDrop.name}
+              </span>
+            </div>
+            <NationBadge
+              nation={playerToToggleDrop.nation}
+              deckBoss={playerToToggleDrop.deck_boss}
+              size="sm"
+            />
+          </div>
+        )}
+      </ConfirmModal>
+
       {/* Modal ยืนยันลบการแข่งขัน */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">

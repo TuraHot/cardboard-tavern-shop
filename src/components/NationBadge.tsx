@@ -16,11 +16,23 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
   showDeckBoss = true,
 }) => {
   const config = getNationConfig(nation);
-  const [imgError, setImgError] = useState(false);
+  const [currentImgSrc, setCurrentImgSrc] = useState<string | undefined>(
+    config.iconUrl || config.fallbackIconUrl
+  );
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    setImgError(false);
-  }, [config.iconUrl]);
+    setCurrentImgSrc(config.iconUrl || config.fallbackIconUrl);
+    setHasError(false);
+  }, [config.iconUrl, config.fallbackIconUrl]);
+
+  const handleImgError = () => {
+    if (currentImgSrc !== config.fallbackIconUrl && config.fallbackIconUrl) {
+      setCurrentImgSrc(config.fallbackIconUrl);
+    } else {
+      setHasError(true);
+    }
+  };
 
   const sizeClasses = {
     sm: 'text-[11px] px-2.5 py-0.5 gap-1.5',
@@ -44,6 +56,21 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
 
   const thaiBoss = deckBoss ? getBossThaiName(deckBoss) : '';
 
+  if (!nation && !deckBoss) {
+    return <span className="text-xs text-gray-500 font-light">-</span>;
+  }
+
+  if (!nation) {
+    return (
+      <span
+        className={`text-[11px] px-2.5 py-0.5 rounded-md bg-black/40 border border-white/10 text-amber-200/90 font-mono flex items-center gap-1 shadow-inner ${sizeClasses}`}
+        title={thaiBoss && thaiBoss !== deckBoss ? `${deckBoss} (${thaiBoss})` : deckBoss || undefined}
+      >
+        <span className="tracking-tight">{thaiBoss}</span>
+      </span>
+    );
+  }
+
   return (
     <div className="inline-flex items-center flex-wrap gap-1.5">
       <span
@@ -51,12 +78,13 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
         className={`inline-flex items-center font-semibold rounded-md border tracking-wide transition-all backdrop-blur-md ${config.badgeClass} ${sizeClasses}`}
         title={`${config.name} (${config.thaiName})`}
       >
-        {config.iconUrl && !imgError ? (
+        {currentImgSrc && !hasError ? (
           <img
-            src={config.iconUrl}
+            src={currentImgSrc}
             alt={config.name}
             className={`${iconSizes} object-contain shrink-0`}
-            onError={() => setImgError(true)}
+            loading="eager"
+            onError={handleImgError}
           />
         ) : (
           <span className="text-xs opacity-90">{config.iconSymbol}</span>

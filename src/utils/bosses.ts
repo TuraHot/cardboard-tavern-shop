@@ -132,6 +132,8 @@ export async function ensureBossesLoaded() {
     }
   } catch (err) {
     console.warn('Failed to fetch bosses:', err);
+  } finally {
+    isAutoFetching = false;
   }
 }
 
@@ -143,13 +145,20 @@ export function getBossThaiName(deckBoss?: string | null): string {
   const trimmed = deckBoss.trim();
   const lower = trimmed.toLowerCase();
   
-  // If found in map, return Thai name
+  // 1. Direct exact match
   const matched = bossMap.get(lower);
   if (matched) return matched;
 
-  // If already contains Thai characters, return as is
+  // 2. If already contains Thai characters, return as is
   if (/[\u0E00-\u0E7F]/.test(trimmed)) {
     return trimmed;
+  }
+
+  // 3. Match if input contains a known boss name
+  for (const [en, th] of bossMap.entries()) {
+    if (en.length >= 4 && lower.includes(en)) {
+      return th;
+    }
   }
 
   return trimmed;

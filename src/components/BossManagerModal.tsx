@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Plus, Trash2, Shield } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { NationRow, BossRow } from "../types";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface BossManagerModalProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
   const [nameEn, setNameEn] = useState("");
   const [nameTh, setNameTh] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bossToDelete, setBossToDelete] = useState<BossRow | null>(null);
+  const [isDeletingBoss, setIsDeletingBoss] = useState(false);
 
   if (!isOpen) return null;
 
@@ -53,9 +56,22 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
     }
   };
 
-  const handleDeleteBoss = async (id: string) => {
-    const { error } = await supabase.from("bosses").delete().eq("id", id);
-    if (!error) onRefresh();
+  const handleConfirmDeleteBoss = async () => {
+    if (!bossToDelete) return;
+    try {
+      setIsDeletingBoss(true);
+      const { error } = await supabase
+        .from("bosses")
+        .delete()
+        .eq("id", bossToDelete.id);
+      if (error) throw error;
+      setBossToDelete(null);
+      onRefresh();
+    } catch (err: any) {
+      alert("ไม่สามารถลบแวนการ์ดหลักได้: " + (err.message || ""));
+    } finally {
+      setIsDeletingBoss(false);
+    }
   };
 
   return (
@@ -152,8 +168,8 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleDeleteBoss(boss.id)}
-                    className="text-red-400 hover:text-red-300 p-1"
+                    onClick={() => setBossToDelete(boss)}
+                    className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
                     title="ลบแวนการ์ดหลัก"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -164,6 +180,34 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal ยืนยันลบแวนการ์ดหลัก */}
+      <ConfirmModal
+        isOpen={!!bossToDelete}
+        onClose={() => !isDeletingBoss && setBossToDelete(null)}
+        onConfirm={handleConfirmDeleteBoss}
+        isLoading={isDeletingBoss}
+        variant="danger"
+        title="ยืนยันการลบแวนการ์ดหลัก"
+        confirmText="ยืนยันลบ"
+        cancelText="ยกเลิก"
+        icon={<Trash2 className="w-5 h-5 text-rose-400" />}
+        warningText="แวนการ์ดหลักนี้จะถูกนำออกจากรายการตัวเลือกของเนชั่น แต่ผู้เล่นที่เคยบันทึกชื่อนี้ไว้แล้วจะไม่ได้รับผลกระทบ"
+        description="คุณแน่ใจหรือไม่ว่าต้องการลบแวนการ์ดหลักนี้ออกจากฐานข้อมูล?"
+      >
+        {bossToDelete && (
+          <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] flex items-center justify-between shadow-inner">
+            <span className="font-bold text-sm text-white">
+              {bossToDelete.name_en}
+            </span>
+            {bossToDelete.name_th && (
+              <span className="text-xs text-amber-300 font-mono">
+                ({bossToDelete.name_th})
+              </span>
+            )}
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 };

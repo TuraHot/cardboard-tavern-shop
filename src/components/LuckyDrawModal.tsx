@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Player } from '../types';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Sparkles, Trophy, X, Filter, RotateCw, CheckCircle, UserCheck } from 'lucide-react';
+import { Sparkles, Trophy, X, Filter, RotateCw, CheckCircle, UserCheck, RotateCcw } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { NationBadge } from './NationBadge';
+import { ConfirmModal } from './ConfirmModal';
 
 interface LuckyDrawModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   const [winner, setWinner] = useState<Player | null>(null);
   const [currentDisplayPlayer, setCurrentDisplayPlayer] = useState<Player | null>(null);
   const [drawHistory, setDrawHistory] = useState<Player[]>([]);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // Exclude previous winners if option is active
   const previousWinnerIds = new Set(drawHistory.map((p) => p.id));
@@ -102,11 +104,14 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   };
 
   const handleResetHistory = () => {
-    if (confirm('ต้องการล้างประวัติผู้ได้รับรางวัลทั้งหมดเพื่อเริ่มสุ่มใหม่ใช่หรือไม่?')) {
-      setDrawHistory([]);
-      setWinner(null);
-      setCurrentDisplayPlayer(null);
-    }
+    setIsResetConfirmOpen(true);
+  };
+
+  const handleConfirmResetHistory = () => {
+    setDrawHistory([]);
+    setWinner(null);
+    setCurrentDisplayPlayer(null);
+    setIsResetConfirmOpen(false);
   };
 
   if (!isOpen) return null;
@@ -332,6 +337,20 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal ยืนยันล้างประวัติรางวัล */}
+      <ConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={handleConfirmResetHistory}
+        variant="warning"
+        title="ยืนยันการล้างประวัติรางวัล"
+        confirmText="ล้างประวัติ"
+        cancelText="ยกเลิก"
+        icon={<RotateCcw className="w-5 h-5 text-amber-400" />}
+        warningText={`ประวัติผู้ได้รับรางวัลที่สุ่มไปแล้วจำนวน ${drawHistory.length} คนจะถูกล้างออก และรายชื่อทั้งหมดจะสามารถถูกสุ่มได้ใหม่อีกครั้ง`}
+        description="คุณต้องการล้างประวัติผู้ได้รับรางวัลทั้งหมดเพื่อเริ่มสุ่มใหม่ใช่หรือไม่?"
+      />
     </div>
   );
 };
