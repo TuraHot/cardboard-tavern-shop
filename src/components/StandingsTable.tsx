@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { PlayerStanding } from '../types';
-import { NationBadge } from './NationBadge';
-import { formatRate } from '../utils/tiebreaker';
-import { Medal, Award, Search, Crown } from 'lucide-react';
+import React, { useState } from "react";
+import { PlayerStanding } from "../types";
+import { NationBadge } from "./NationBadge";
+import { formatRate } from "../utils/tiebreaker";
+import { Medal, Award, Search, Crown } from "lucide-react";
 
 interface StandingsTableProps {
   standings: PlayerStanding[];
@@ -13,11 +13,11 @@ interface StandingsTableProps {
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
   standings,
-  searchQuery = '',
+  searchQuery = "",
   onSearchChange,
   showNationAndBoss = true,
 }) => {
-  const [internalSearch, setInternalSearch] = useState('');
+  const [internalSearch, setInternalSearch] = useState("");
   const query = searchQuery || internalSearch;
 
   const filteredStandings = standings.filter((s) => {
@@ -25,7 +25,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
     const lower = query.toLowerCase();
     const matchBasic =
       s.player.name.toLowerCase().includes(lower) ||
-      s.player.lucky_draw_number.toString() === lower.replace('🍀', '').trim();
+      s.player.lucky_draw_number.toString() === lower.replace("🍀", "").trim();
 
     if (matchBasic) return true;
 
@@ -82,8 +82,8 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
             }}
             placeholder={
               showNationAndBoss
-                ? 'ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก...'
-                : 'ค้นหาชื่อผู้เล่น หรือ หมายเลข 🍀...'
+                ? "ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก..."
+                : "ค้นหาชื่อผู้เล่น หรือ หมายเลข 🍀..."
             }
             className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
           />
@@ -100,10 +100,16 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                 <th className="py-3 px-4">ผู้เล่น</th>
                 <th className="py-3 px-3 text-center">แต้ม</th>
                 <th className="py-3 px-3 text-center">ชนะ-แพ้</th>
-                <th className="py-3 px-3 text-center" title="Opponent Match Win % (ขั้นต่ำ 0.33)">
+                <th
+                  className="py-3 px-3 text-center"
+                  title="Opponent Match Win % (ขั้นต่ำ 0.33)"
+                >
                   OMW
                 </th>
-                <th className="py-3 px-3 text-center" title="Opponent's Opponent Match Win %">
+                <th
+                  className="py-3 px-3 text-center"
+                  title="Opponent's Opponent Match Win %"
+                >
                   OOMW
                 </th>
               </tr>
@@ -126,11 +132,11 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       key={s.player.id}
                       className={`transition-colors ${
                         isChampion
-                          ? 'bg-gradient-to-r from-amber-500/10 via-amber-950/20 to-transparent hover:from-amber-500/15'
+                          ? "bg-gradient-to-r from-amber-500/10 via-amber-950/20 to-transparent hover:from-amber-500/15"
                           : isPodium
-                          ? 'bg-gradient-to-r from-white/[0.03] to-transparent hover:bg-white/[0.05]'
-                          : 'hover:bg-white/[0.02]'
-                      } ${isDropped ? 'opacity-40 line-through' : ''}`}
+                            ? "bg-gradient-to-r from-white/[0.03] to-transparent hover:bg-white/[0.05]"
+                            : "hover:bg-white/[0.02]"
+                      } ${isDropped ? "opacity-40 line-through" : ""}`}
                     >
                       <td className="py-3.5 px-4 text-center">
                         {getRankBadge(s.rank)}
@@ -139,10 +145,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 font-bold whitespace-nowrap shadow-sm">
-                              🍀 #{s.player.lucky_draw_number}
-                            </span>
-                            <span className={`font-bold text-base tracking-tight ${isChampion ? 'gold-gradient-text' : 'text-white'}`}>
+                            <span
+                              className={`font-bold text-base tracking-tight ${isChampion ? "gold-gradient-text" : "text-white"}`}
+                            >
                               {s.player.name}
                             </span>
                             {isDropped && (
@@ -164,15 +169,21 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       </td>
 
                       <td className="py-3.5 px-3 text-center">
-                        <span className={`font-mono font-black text-lg ${isChampion ? 'gold-gradient-text drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'text-amber-200'}`}>
+                        <span
+                          className={`font-mono font-black text-lg ${isChampion ? "gold-gradient-text drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "text-amber-200"}`}
+                        >
                           {s.points}
                         </span>
                       </td>
 
                       <td className="py-3.5 px-3 text-center font-mono text-xs whitespace-nowrap">
-                        <span className="text-emerald-400 font-bold">{s.wins}</span>
+                        <span className="text-emerald-400 font-bold">
+                          {s.wins}
+                        </span>
                         <span className="text-gray-500 mx-1.5">-</span>
-                        <span className="text-rose-400 font-bold">{s.losses}</span>
+                        <span className="text-rose-400 font-bold">
+                          {s.losses}
+                        </span>
                         {s.byes > 0 && (
                           <span className="text-[10px] text-cyan-400 ml-1.5 px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/20">
                             {s.byes} BYE

@@ -9,7 +9,11 @@ import {
   NationRow,
   BossRow,
 } from "../types";
-import { VANGUARD_NATIONS, getNationConfig, syncNationsFromDb } from "../utils/nations";
+import {
+  VANGUARD_NATIONS,
+  getNationConfig,
+  syncNationsFromDb,
+} from "../utils/nations";
 import { syncBossesFromDb } from "../utils/bosses";
 import { calculateStandings } from "../utils/tiebreaker";
 import { generateSwissPairings } from "../utils/pairing";
@@ -75,7 +79,7 @@ export const AdminTournamentPage: React.FC = () => {
 
   // Add/Edit Player form state
   const [formName, setFormName] = useState("");
-  const [formNation, setFormNation] = useState<VanguardNation>("Dragon Empire");
+  const [formNation, setFormNation] = useState<VanguardNation | "">("");
   const [formDeckBoss, setFormDeckBoss] = useState("");
   const [submittingPlayer, setSubmittingPlayer] = useState(false);
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
@@ -365,6 +369,10 @@ export const AdminTournamentPage: React.FC = () => {
   const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !formName.trim()) return;
+    if (!formNation) {
+      alert("กรุณาเลือกประเทศ");
+      return;
+    }
 
     try {
       setSubmittingPlayer(true);
@@ -397,6 +405,7 @@ export const AdminTournamentPage: React.FC = () => {
       if (error) throw error;
       setFormName("");
       setFormDeckBoss("");
+      setFormNation("");
       setIsAddPlayerOpen(false);
       await fetchData();
     } catch (err: any) {
@@ -409,6 +418,10 @@ export const AdminTournamentPage: React.FC = () => {
   const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer || !formName.trim()) return;
+    if (!formNation) {
+      alert("กรุณาเลือกประเทศ");
+      return;
+    }
 
     try {
       setSubmittingPlayer(true);
@@ -468,8 +481,14 @@ export const AdminTournamentPage: React.FC = () => {
     if (!tournament) return;
     try {
       setIsDeletingTournament(true);
-      await supabase.from("matches").delete().eq("tournament_id", tournament.id);
-      await supabase.from("players").delete().eq("tournament_id", tournament.id);
+      await supabase
+        .from("matches")
+        .delete()
+        .eq("tournament_id", tournament.id);
+      await supabase
+        .from("players")
+        .delete()
+        .eq("tournament_id", tournament.id);
       const { error } = await supabase
         .from("tournaments")
         .delete()
@@ -564,7 +583,7 @@ export const AdminTournamentPage: React.FC = () => {
             </div>
 
             {/* Quick Actions & Timer */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-start lg:items-end gap-3 flex-shrink-0">
               <CountdownTimer
                 timerEndsAt={tournament.timer_ends_at}
                 timerPausedRemainingSeconds={
@@ -577,42 +596,44 @@ export const AdminTournamentPage: React.FC = () => {
                 onReset={handleResetTimer}
               />
 
-              <button
-                onClick={() => setIsLuckyDrawOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.25)] transition-all active:scale-95"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-200" />
-                <span>🍀 สุ่ม Lucky Draw</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 justify-start lg:justify-end">
+                <button
+                  onClick={() => setIsLuckyDrawOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-[0_0_15px_rgba(52,211,153,0.25)] transition-all active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-200" />
+                  <span>🍀 สุ่ม Lucky Draw</span>
+                </button>
 
-              <Link
-                to={`/tournament/${tournament.id}/tv`}
-                target="_blank"
-                className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-cyan-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
-              >
-                <Tv className="w-4 h-4 text-cyan-400" />
-                <span>เปิดจอ TV</span>
-              </Link>
+                <Link
+                  to={`/tournament/${tournament.id}/tv`}
+                  target="_blank"
+                  className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-cyan-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <Tv className="w-4 h-4 text-cyan-400" />
+                  <span>เปิดจอ TV</span>
+                </Link>
 
-              <button
-                type="button"
-                onClick={() => setIsEditTournamentOpen(true)}
-                className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
-                title="แก้ไขข้อมูลการแข่งขันนี้"
-              >
-                <Edit2 className="w-4 h-4 text-amber-400" />
-                <span>แก้ไขข้อมูล</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditTournamentOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                  title="แก้ไขข้อมูลการแข่งขันนี้"
+                >
+                  <Edit2 className="w-4 h-4 text-amber-400" />
+                  <span>แก้ไขข้อมูล</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-100 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
-                title="ลบการแข่งขันนี้"
-              >
-                <Trash2 className="w-4 h-4 text-rose-400" />
-                <span>ลบการแข่งขัน</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-100 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                  title="ลบการแข่งขันนี้"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-400" />
+                  <span>ลบการแข่งขัน</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -829,10 +850,7 @@ export const AdminTournamentPage: React.FC = () => {
                     onClick={() => {
                       setFormName("");
                       setFormDeckBoss("");
-                      setFormNation(
-                        (nations[0]?.name_en as VanguardNation) ||
-                          "Dragon Empire",
-                      );
+                      setFormNation("");
                       setIsAddPlayerOpen(true);
                     }}
                     className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-all"
@@ -998,15 +1016,15 @@ export const AdminTournamentPage: React.FC = () => {
                   ประเทศ (Nation)
                 </label>
                 <select
+                  required
                   value={formNation}
-                  onChange={(e) =>
-                    setFormNation(e.target.value as VanguardNation)
-                  }
+                  onChange={(e) => {
+                    setFormNation(e.target.value as VanguardNation | "");
+                    setFormDeckBoss("");
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
                 >
-                  <option value="">
-                    -- เลือกประเทศ --
-                  </option>
+                  <option value="">-- เลือกประเทศ --</option>
                   {(nations.length > 0
                     ? nations.map((n) => ({
                         name: n.name_en as VanguardNation,
@@ -1034,7 +1052,7 @@ export const AdminTournamentPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-gray-300">
                     ชื่อแวนการ์ดหลัก
                   </label>
-                  {bosses.filter(
+                  {formNation && bosses.filter(
                     (b) =>
                       nations.find(
                         (n) =>
@@ -1058,7 +1076,7 @@ export const AdminTournamentPage: React.FC = () => {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  {bosses.filter(
+                  {formNation && bosses.filter(
                     (b) =>
                       nations.find(
                         (n) =>
@@ -1088,9 +1106,7 @@ export const AdminTournamentPage: React.FC = () => {
                       }}
                       className="w-full px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-amber-200 text-xs focus:outline-none focus:border-amber-500 shadow-inner"
                     >
-                      <option value="">
-                        -- เลือกแวนการ์ดหลัก --
-                      </option>
+                      <option value="">-- เลือกแวนการ์ดหลัก --</option>
                       {bosses
                         .filter(
                           (b) =>
@@ -1165,12 +1181,15 @@ export const AdminTournamentPage: React.FC = () => {
                   ประเทศ (Nation)
                 </label>
                 <select
+                  required
                   value={formNation}
-                  onChange={(e) =>
-                    setFormNation(e.target.value as VanguardNation)
-                  }
+                  onChange={(e) => {
+                    setFormNation(e.target.value as VanguardNation | "");
+                    setFormDeckBoss("");
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
                 >
+                  <option value="">-- เลือกประเทศ --</option>
                   {(nations.length > 0
                     ? nations.map((n) => ({
                         name: n.name_en as VanguardNation,
@@ -1280,16 +1299,8 @@ export const AdminTournamentPage: React.FC = () => {
                             {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
                           </option>
                         ))}
-                      <option value="__custom__">✏️ พิมพ์ระบุชื่อเอง...</option>
                     </select>
                   )}
-                  <input
-                    type="text"
-                    value={formDeckBoss}
-                    onChange={(e) => setFormDeckBoss(e.target.value)}
-                    placeholder="เช่น Dragonic Overlord หรือเลือกจากด้านบน"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner"
-                  />
                 </div>
               </div>
 
@@ -1386,10 +1397,14 @@ export const AdminTournamentPage: React.FC = () => {
 
             <p className="text-sm text-gray-300 leading-relaxed mb-6">
               คุณแน่ใจหรือไม่ว่าต้องการลบการแข่งขัน{" "}
-              <span className="font-bold text-rose-300">"{tournament.name}"</span>?
+              <span className="font-bold text-rose-300">
+                "{tournament.name}"
+              </span>
+              ?
               <br />
               <span className="text-xs text-rose-400/90 mt-2 block bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/20">
-                ⚠️ ข้อมูลผู้เข้าแข่งขัน รอบการแข่ง และผลการแข่งขันทั้งหมดจะถูกลบถาวรและไม่สามารถกู้คืนได้
+                ⚠️ ข้อมูลผู้เข้าแข่งขัน รอบการแข่ง
+                และผลการแข่งขันทั้งหมดจะถูกลบถาวรและไม่สามารถกู้คืนได้
               </span>
             </p>
 
