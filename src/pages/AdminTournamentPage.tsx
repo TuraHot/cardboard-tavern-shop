@@ -28,6 +28,7 @@ import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
 import { EditTournamentModal } from "../components/EditTournamentModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { exportPairingsPdf, exportStandingsPdf } from "../utils/pdfExport";
 import { Footer } from "../components/Footer";
 import {
   Users,
@@ -838,6 +839,14 @@ export const AdminTournamentPage: React.FC = () => {
                   setSelectedMatch(m);
                   setIsReportOpen(true);
                 }}
+                onExportPdf={() =>
+                  exportPairingsPdf({
+                    tournament,
+                    roundNumber: selectedRoundFilter,
+                    matches,
+                    players,
+                  })
+                }
               />
             </div>
           </div>
@@ -1002,7 +1011,15 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 3: Standings */}
         {activeTab === "standings" && (
           <div>
-            <StandingsTable standings={standings} />
+            <StandingsTable
+              standings={standings}
+              onExportPdf={() =>
+                exportStandingsPdf({
+                  tournament,
+                  standings,
+                })
+              }
+            />
           </div>
         )}
 

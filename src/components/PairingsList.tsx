@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Match, Player } from '../types';
-import { Search, Trophy, XCircle, Clock, ChevronRight, Swords, Shield } from 'lucide-react';
+import { Search, Trophy, XCircle, Clock, ChevronRight, Swords, Shield, Printer } from 'lucide-react';
 
 interface PairingsListProps {
   matches: Match[];
   players: Player[];
   onSelectMatch?: (match: Match) => void;
   canReport?: boolean;
+  onExportPdf?: () => void;
 }
 
 export const PairingsList: React.FC<PairingsListProps> = ({
@@ -14,6 +15,7 @@ export const PairingsList: React.FC<PairingsListProps> = ({
   players,
   onSelectMatch,
   canReport = true,
+  onExportPdf,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -48,16 +50,30 @@ export const PairingsList: React.FC<PairingsListProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search Header */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="ค้นหาชื่อผู้เล่น, โต๊ะ หรือหมายเลข 🍀..."
-          className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
-        />
+      {/* Search Header and Export Button */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ค้นหาชื่อผู้เล่น, โต๊ะ หรือหมายเลข 🍀..."
+            className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
+          />
+        </div>
+
+        {onExportPdf && (
+          <button
+            type="button"
+            onClick={onExportPdf}
+            className="px-3.5 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm shrink-0 active:scale-95"
+            title="พิมพ์หรือบันทึกตารางจับคู่นี้เป็น PDF"
+          >
+            <Printer className="w-4 h-4 text-amber-400" />
+            <span>Export PDF ตารางแข่งขัน</span>
+          </button>
+        )}
       </div>
 
       {/* Match Cards */}

@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { PlayerStanding } from "../types";
 import { NationBadge } from "./NationBadge";
 import { formatRate } from "../utils/tiebreaker";
-import { Medal, Award, Search, Crown } from "lucide-react";
+import { Medal, Award, Search, Crown, Printer } from "lucide-react";
 
 interface StandingsTableProps {
   standings: PlayerStanding[];
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   showNationAndBoss?: boolean;
+  onExportPdf?: () => void;
 }
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
@@ -16,6 +17,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   searchQuery = "",
   onSearchChange,
   showNationAndBoss = true,
+  onExportPdf,
 }) => {
   const [internalSearch, setInternalSearch] = useState("");
   const query = searchQuery || internalSearch;
@@ -69,26 +71,40 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search Header */}
-      {onSearchChange || !searchQuery ? (
-        <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              if (onSearchChange) onSearchChange(e.target.value);
-              else setInternalSearch(e.target.value);
-            }}
-            placeholder={
-              showNationAndBoss
-                ? "ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก..."
-                : "ค้นหาชื่อผู้เล่น หรือ หมายเลข 🍀..."
-            }
-            className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
-          />
-        </div>
-      ) : null}
+      {/* Search Header and Export Button */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {onSearchChange || !searchQuery ? (
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                if (onSearchChange) onSearchChange(e.target.value);
+                else setInternalSearch(e.target.value);
+              }}
+              placeholder={
+                showNationAndBoss
+                  ? "ค้นหาชื่อผู้เล่น, หมายเลข 🍀 หรือประเทศ/แวนการ์ดหลัก..."
+                  : "ค้นหาชื่อผู้เล่น หรือ หมายเลข 🍀..."
+              }
+              className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0b101c]/80 border border-white/[0.08] text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-inner"
+            />
+          </div>
+        ) : <div className="flex-1" />}
+
+        {onExportPdf && (
+          <button
+            type="button"
+            onClick={onExportPdf}
+            className="px-3.5 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm shrink-0 active:scale-95"
+            title="พิมพ์หรือบันทึกตารางคะแนนเป็น PDF"
+          >
+            <Printer className="w-4 h-4 text-amber-400" />
+            <span>Export PDF ตารางคะแนน</span>
+          </button>
+        )}
+      </div>
 
       {/* Standings Table Card */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c121e]/90 backdrop-blur-xl overflow-hidden shadow-[0_15px_35px_-10px_rgba(0,0,0,0.8)]">
