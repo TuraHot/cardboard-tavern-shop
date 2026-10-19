@@ -16,6 +16,7 @@ export type VanguardNation =
   | 'Keter Sanctuary'
   | 'Stoicheia'
   | 'Lyrical Monasterio'
+  | 'Super Sentai'
   | 'Other';
 
 export interface Tournament {

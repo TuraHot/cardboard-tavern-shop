@@ -40,11 +40,16 @@ export const HomePage: React.FC = () => {
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
+  const [tournamentToDelete, setTournamentToDelete] =
+    useState<Tournament | null>(null);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
-  const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
+  const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "completed"
+  >("all");
   // Form states for creating tournament
   const [name, setName] = useState("แข่งแวนการ์ด D TH วันเสาร์");
   const [format, setFormat] = useState<TournamentFormat>("Standard TH");
@@ -61,7 +66,7 @@ export const HomePage: React.FC = () => {
   const [maxRounds, setMaxRounds] = useState(4);
   const [roundDuration, setRoundDuration] = useState(30);
   const [description, setDescription] = useState(
-    "รางวัลอันดับที่ 1-3 : การ์ดโปรโมประจำเดือน คนละ 4 ใบ+\n" +
+    "รางวัลอันดับที่ 1-3 : การ์ดโปรโมประจำเดือน คนละ 4 ใบ\n" +
       "รางวัลอันดับที่ 4 เป็นต้นไป : การ์ดโปรโม คนละ 4 ใบ\n" +
       "มี Lucky Draw สุ่มแจกการ์ดพิเศษ (กรณีผู้แข่ง 16 คนขึ้นไป)\n" +
       "เปิดลงทะเบียน walk in 12:00 น. | เริ่มแพริ่งแข่งขัน 14:30 น.",
@@ -133,15 +138,23 @@ export const HomePage: React.FC = () => {
     if (!tournamentToDelete) return;
     try {
       setIsDeletingTournament(true);
-      await supabase.from("matches").delete().eq("tournament_id", tournamentToDelete.id);
-      await supabase.from("players").delete().eq("tournament_id", tournamentToDelete.id);
+      await supabase
+        .from("matches")
+        .delete()
+        .eq("tournament_id", tournamentToDelete.id);
+      await supabase
+        .from("players")
+        .delete()
+        .eq("tournament_id", tournamentToDelete.id);
       const { error } = await supabase
         .from("tournaments")
         .delete()
         .eq("id", tournamentToDelete.id);
       if (error) throw error;
 
-      setTournaments((prev) => prev.filter((t) => t.id !== tournamentToDelete.id));
+      setTournaments((prev) =>
+        prev.filter((t) => t.id !== tournamentToDelete.id),
+      );
       setTournamentToDelete(null);
     } catch (err: any) {
       console.error("Error deleting tournament:", err);
@@ -346,8 +359,12 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const activeCount = tournaments.filter((t) => t.status !== "completed").length;
-  const completedCount = tournaments.filter((t) => t.status === "completed").length;
+  const activeCount = tournaments.filter(
+    (t) => t.status !== "completed",
+  ).length;
+  const completedCount = tournaments.filter(
+    (t) => t.status === "completed",
+  ).length;
 
   const filteredTournaments = tournaments.filter((t) => {
     if (statusFilter === "active" && t.status === "completed") return false;
@@ -742,427 +759,433 @@ export const HomePage: React.FC = () => {
             {/* Scrollable Form Body */}
             <div className="overflow-y-auto px-6 py-5 flex-1">
               <form onSubmit={handleCreateTournament} className="space-y-5">
-              {/* Row 1: Tournament Name */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                  ชื่อการแข่งขัน<span className="text-amber-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="เช่น แข่งแวนการ์ด D TH วันเสาร์, Cardfight!! Vanguard Store Championship"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-                />
-              </div>
-
-              {/* Row 2: Format & Date/Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Row 1: Tournament Name */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    รูปแบบการแข่งขัน<span className="text-amber-400">*</span>
+                    ชื่อการแข่งขัน<span className="text-amber-400">*</span>
                   </label>
-                  <select
-                    value={format}
-                    onChange={(e) => {
-                      const newFormat = e.target.value as TournamentFormat;
-                      setFormat(newFormat);
-                      if (newFormat === "Standard TH") {
-                        setBannerUrl("/images/vanguard_banner_1.jpg");
-                        setName("แข่งแวนการ์ด D TH วันเสาร์");
-                      } else if (newFormat === "Premium TH") {
-                        setBannerUrl("/images/vanguard_banner_2.jpg");
-                        setName("แข่งแวนการ์ด Premium วันอาทิตย์");
-                      }
-                    }}
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="เช่น แข่งแวนการ์ด D TH วันเสาร์, Cardfight!! Vanguard Store Championship"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-                  >
-                    <option value="Standard TH">
-                      Standard (TH) - การ์ดไทย
-                    </option>
-                    <option value="Standard JP">
-                      Standard (JP) - การ์ดญี่ปุ่น
-                    </option>
-                    <option value="Premium TH">Premium (TH) - การ์ดไทย</option>
-                  </select>
+                  />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    วันและเวลาเริ่มแข่ง (24 ชม.){" "}
-                    <span className="text-amber-400">*</span>
-                  </label>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* 1. ช่องเลือกวันที่ */}
-                    <input
-                      type="date"
-                      required
-                      value={
-                        eventDate
-                          ? eventDate.split("T")[0]
-                          : getTodayDateString()
-                      }
+                {/* Row 2: Format & Date/Time */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      รูปแบบการแข่งขัน<span className="text-amber-400">*</span>
+                    </label>
+                    <select
+                      value={format}
                       onChange={(e) => {
-                        const datePart = e.target.value;
-                        const timePart =
-                          eventDate?.split("T")[1]?.slice(0, 5) || "14:30";
-                        setEventDate(datePart ? `${datePart}T${timePart}` : "");
+                        const newFormat = e.target.value as TournamentFormat;
+                        setFormat(newFormat);
+                        if (newFormat === "Standard TH") {
+                          setBannerUrl("/images/vanguard_banner_1.jpg");
+                          setName("แข่งแวนการ์ด D TH วันเสาร์");
+                        } else if (newFormat === "Premium TH") {
+                          setBannerUrl("/images/vanguard_banner_2.jpg");
+                          setName("แข่งแวนการ์ด Premium วันอาทิตย์");
+                        }
                       }}
-                      style={{ colorScheme: "dark" }}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-                    />
+                    >
+                      <option value="Standard TH">
+                        Standard (TH) - การ์ดไทย
+                      </option>
+                      <option value="Standard JP">
+                        Standard (JP) - การ์ดญี่ปุ่น
+                      </option>
+                      <option value="Premium TH">
+                        Premium (TH) - การ์ดไทย
+                      </option>
+                    </select>
+                  </div>
 
-                    {/* 2. ช่องเลือกเวลาแบบ 24 ชั่วโมง (ชั่วโมง : นาที) */}
-                    <div className="flex items-center gap-1.5 bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/30">
-                      {/* เลือกชั่วโมง (00 - 23) */}
-                      <select
-                        value={eventDate?.split("T")[1]?.split(":")[0] || "14"}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      วันและเวลาเริ่มแข่ง (24 ชม.){" "}
+                      <span className="text-amber-400">*</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* 1. ช่องเลือกวันที่ */}
+                      <input
+                        type="date"
+                        required
+                        value={
+                          eventDate
+                            ? eventDate.split("T")[0]
+                            : getTodayDateString()
+                        }
                         onChange={(e) => {
-                          const datePart =
-                            eventDate?.split("T")[0] ||
-                            getTodayDateString();
-                          const minutePart =
+                          const datePart = e.target.value;
+                          const timePart =
+                            eventDate?.split("T")[1]?.slice(0, 5) || "14:30";
+                          setEventDate(
+                            datePart ? `${datePart}T${timePart}` : "",
+                          );
+                        }}
+                        style={{ colorScheme: "dark" }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+                      />
+
+                      {/* 2. ช่องเลือกเวลาแบบ 24 ชั่วโมง (ชั่วโมง : นาที) */}
+                      <div className="flex items-center gap-1.5 bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/30">
+                        {/* เลือกชั่วโมง (00 - 23) */}
+                        <select
+                          value={
+                            eventDate?.split("T")[1]?.split(":")[0] || "14"
+                          }
+                          onChange={(e) => {
+                            const datePart =
+                              eventDate?.split("T")[0] || getTodayDateString();
+                            const minutePart =
+                              eventDate
+                                ?.split("T")[1]
+                                ?.split(":")[1]
+                                ?.slice(0, 2) || "30";
+                            setEventDate(
+                              `${datePart}T${e.target.value}:${minutePart}`,
+                            );
+                          }}
+                          className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
+                        >
+                          {Array.from({ length: 24 }, (_, i) =>
+                            String(i).padStart(2, "0"),
+                          ).map((hour) => (
+                            <option
+                              key={hour}
+                              value={hour}
+                              className="bg-gray-900 text-white"
+                            >
+                              {hour}
+                            </option>
+                          ))}
+                        </select>
+
+                        <span className="text-amber-400 font-bold">:</span>
+
+                        {/* เลือกนาที (ทีละ 5 นาที: 00, 05, 10, ..., 55) */}
+                        <select
+                          value={
                             eventDate
                               ?.split("T")[1]
                               ?.split(":")[1]
-                              ?.slice(0, 2) || "30";
-                          setEventDate(
-                            `${datePart}T${e.target.value}:${minutePart}`,
-                          );
-                        }}
-                        className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
-                      >
-                        {Array.from({ length: 24 }, (_, i) =>
-                          String(i).padStart(2, "0"),
-                        ).map((hour) => (
-                          <option
-                            key={hour}
-                            value={hour}
-                            className="bg-gray-900 text-white"
-                          >
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
+                              ?.slice(0, 2) || "30"
+                          }
+                          onChange={(e) => {
+                            const datePart =
+                              eventDate?.split("T")[0] || getTodayDateString();
+                            const hourPart =
+                              eventDate?.split("T")[1]?.split(":")[0] || "14";
+                            setEventDate(
+                              `${datePart}T${hourPart}:${e.target.value}`,
+                            );
+                          }}
+                          className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
+                        >
+                          {Array.from({ length: 12 }, (_, i) =>
+                            String(i * 5).padStart(2, "0"),
+                          ).map((minute) => (
+                            <option
+                              key={minute}
+                              value={minute}
+                              className="bg-gray-900 text-white"
+                            >
+                              {minute}
+                            </option>
+                          ))}
+                        </select>
 
-                      <span className="text-amber-400 font-bold">:</span>
-
-                      {/* เลือกนาที (ทีละ 5 นาที: 00, 05, 10, ..., 55) */}
-                      <select
-                        value={
-                          eventDate
-                            ?.split("T")[1]
-                            ?.split(":")[1]
-                            ?.slice(0, 2) || "30"
-                        }
-                        onChange={(e) => {
-                          const datePart =
-                            eventDate?.split("T")[0] ||
-                            getTodayDateString();
-                          const hourPart =
-                            eventDate?.split("T")[1]?.split(":")[0] || "14";
-                          setEventDate(
-                            `${datePart}T${hourPart}:${e.target.value}`,
-                          );
-                        }}
-                        className="w-full bg-transparent text-white text-sm font-mono text-center focus:outline-none cursor-pointer"
-                      >
-                        {Array.from({ length: 12 }, (_, i) =>
-                          String(i * 5).padStart(2, "0"),
-                        ).map((minute) => (
-                          <option
-                            key={minute}
-                            value={minute}
-                            className="bg-gray-900 text-white"
-                          >
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
-
-                      <span className="text-xs text-gray-400 ml-1 shrink-0">
-                        น.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 3: Entry Fee, Max Capacity, Round Duration & Rounds */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    ค่าสมัคร (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={10}
-                    value={entryFee}
-                    onChange={(e) => setEntryFee(parseInt(e.target.value) || 0)}
-                    placeholder="70"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    จำกัดผู้สมัคร (คน)
-                  </label>
-                  <input
-                    type="number"
-                    min={2}
-                    max={128}
-                    value={maxPlayers}
-                    onChange={(e) =>
-                      setMaxPlayers(parseInt(e.target.value) || 20)
-                    }
-                    placeholder="20"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    เวลาต่อรอบ (นาที)
-                  </label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={120}
-                    value={roundDuration}
-                    onChange={(e) =>
-                      setRoundDuration(parseInt(e.target.value) || 30)
-                    }
-                    placeholder="30"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    จำนวนรอบสูงสุด
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={maxRounds}
-                    onChange={(e) =>
-                      setMaxRounds(parseInt(e.target.value) || 4)
-                    }
-                    placeholder="4"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 4: Store & Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    ชื่อร้านค้า
-                  </label>
-                  <input
-                    type="text"
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                    placeholder="Cardboard Tavern"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                    สถานที่จัดแข่ง
-                  </label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 5: Banner Image Upload & Compression (Bucket: banners) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
-                    <Upload className="w-4 h-4 text-amber-400" />
-                    <span>อัปโหลดรูปโปสเตอร์การแข่งขัน</span>
-                  </label>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileChange(file);
-                  }}
-                />
-
-                {bannerPreview ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-lg">
-                    <div className="relative aspect-[6/5] w-full max-h-60 sm:max-h-72 overflow-hidden flex items-center justify-center">
-                      <img
-                        src={bannerPreview}
-                        alt="Banner Preview"
-                        className="w-full h-full object-cover object-center"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
-
-                      {/* Top badges preview */}
-                      <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-bold text-white shadow-md">
-                        <Calendar className="w-3 h-3 text-slate-300" />
-                        <span>{formatEventDate(eventDate)}</span>
-                      </div>
-
-                      <div className="absolute top-2.5 right-2.5">
-                        <span className="px-2.5 py-0.5 rounded-md bg-[#00e676]/20 border border-[#00e676]/60 text-[#00e676] text-[10px] font-black uppercase tracking-wider backdrop-blur-md">
-                          RECEPTION
+                        <span className="text-xs text-gray-400 ml-1 shrink-0">
+                          น.
                         </span>
                       </div>
-
-                      {/* Action buttons on image */}
-                      <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={compressing || uploadingImage}
-                          className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-black/95 text-white text-xs font-semibold backdrop-blur-md border border-white/20 flex items-center gap-1.5 transition-all shadow-lg active:scale-95"
-                        >
-                          <Upload className="w-3.5 h-3.5 text-amber-400" />
-                          <span>เปลี่ยนรูปภาพ</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBannerFile(null);
-                            setCompressedBlob(null);
-                            setBannerPreview(null);
-                            setBannerUrl("/images/vanguard_banner_1.jpg");
-                            if (fileInputRef.current)
-                              fileInputRef.current.value = "";
-                          }}
-                          className="p-1.5 px-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors shadow-lg"
-                          title="ลบรูปและใช้ค่าเริ่มต้น"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>ลบ</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 bg-[#070a12] border-t border-white/[0.08] flex items-center justify-between text-xs text-gray-400">
-                      <span className="truncate max-w-[240px] text-gray-300 font-medium">
-                        📁 {bannerFile ? bannerFile.name : "รูปภาพที่เลือก"}
-                      </span>
                     </div>
                   </div>
-                ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const file = e.dataTransfer.files?.[0];
+                </div>
+
+                {/* Row 3: Entry Fee, Max Capacity, Round Duration & Rounds */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      ค่าสมัคร (บาท)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={10}
+                      value={entryFee}
+                      onChange={(e) =>
+                        setEntryFee(parseInt(e.target.value) || 0)
+                      }
+                      placeholder="70"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      จำกัดผู้สมัคร (คน)
+                    </label>
+                    <input
+                      type="number"
+                      min={2}
+                      max={128}
+                      value={maxPlayers}
+                      onChange={(e) =>
+                        setMaxPlayers(parseInt(e.target.value) || 20)
+                      }
+                      placeholder="20"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      เวลาต่อรอบ (นาที)
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      max={120}
+                      value={roundDuration}
+                      onChange={(e) =>
+                        setRoundDuration(parseInt(e.target.value) || 30)
+                      }
+                      placeholder="30"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      จำนวนรอบสูงสุด
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={maxRounds}
+                      onChange={(e) =>
+                        setMaxRounds(parseInt(e.target.value) || 4)
+                      }
+                      placeholder="4"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Store & Location */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      ชื่อร้านค้า
+                    </label>
+                    <input
+                      type="text"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      placeholder="Cardboard Tavern"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-200 mb-1.5">
+                      สถานที่จัดแข่ง
+                    </label>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5: Banner Image Upload & Compression (Bucket: banners) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>อัปโหลดรูปโปสเตอร์การแข่งขัน</span>
+                    </label>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
                       if (file) handleFileChange(file);
                     }}
-                    className="cursor-pointer border-2 border-dashed border-white/15 hover:border-amber-400/50 rounded-2xl p-6 sm:p-7 bg-[#070a12]/70 hover:bg-white/[0.02] flex flex-col items-center justify-center text-center transition-all group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform border border-amber-500/20">
-                      {compressing ? (
-                        <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
-                      ) : (
-                        <Upload className="w-6 h-6" />
-                      )}
+                  />
+
+                  {bannerPreview ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-lg">
+                      <div className="relative aspect-[6/5] w-full max-h-60 sm:max-h-72 overflow-hidden flex items-center justify-center">
+                        <img
+                          src={bannerPreview}
+                          alt="Banner Preview"
+                          className="w-full h-full object-cover object-center"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+
+                        {/* Top badges preview */}
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-bold text-white shadow-md">
+                          <Calendar className="w-3 h-3 text-slate-300" />
+                          <span>{formatEventDate(eventDate)}</span>
+                        </div>
+
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className="px-2.5 py-0.5 rounded-md bg-[#00e676]/20 border border-[#00e676]/60 text-[#00e676] text-[10px] font-black uppercase tracking-wider backdrop-blur-md">
+                            RECEPTION
+                          </span>
+                        </div>
+
+                        {/* Action buttons on image */}
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={compressing || uploadingImage}
+                            className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-black/95 text-white text-xs font-semibold backdrop-blur-md border border-white/20 flex items-center gap-1.5 transition-all shadow-lg active:scale-95"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-amber-400" />
+                            <span>เปลี่ยนรูปภาพ</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBannerFile(null);
+                              setCompressedBlob(null);
+                              setBannerPreview(null);
+                              setBannerUrl("/images/vanguard_banner_1.jpg");
+                              if (fileInputRef.current)
+                                fileInputRef.current.value = "";
+                            }}
+                            className="p-1.5 px-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors shadow-lg"
+                            title="ลบรูปและใช้ค่าเริ่มต้น"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>ลบ</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-[#070a12] border-t border-white/[0.08] flex items-center justify-between text-xs text-gray-400">
+                        <span className="truncate max-w-[240px] text-gray-300 font-medium">
+                          📁 {bannerFile ? bannerFile.name : "รูปภาพที่เลือก"}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-white mb-1">
-                      {compressing
-                        ? "กำลังบีบอัดรูปภาพ..."
-                        : "คลิกหรือลากไฟล์ภาพโปสเตอร์มาวางที่นี่"}
-                    </p>
-                    <p className="text-xs text-gray-400 max-w-sm mb-2.5">
-                      รองรับไฟล์ภาพ JPG, PNG, WebP
-                    </p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleFileChange(file);
+                      }}
+                      className="cursor-pointer border-2 border-dashed border-white/15 hover:border-amber-400/50 rounded-2xl p-6 sm:p-7 bg-[#070a12]/70 hover:bg-white/[0.02] flex flex-col items-center justify-center text-center transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform border border-amber-500/20">
+                        {compressing ? (
+                          <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+                        ) : (
+                          <Upload className="w-6 h-6" />
+                        )}
+                      </div>
+                      <p className="text-sm font-bold text-white mb-1">
+                        {compressing
+                          ? "กำลังบีบอัดรูปภาพ..."
+                          : "คลิกหรือลากไฟล์ภาพโปสเตอร์มาวางที่นี่"}
+                      </p>
+                      <p className="text-xs text-gray-400 max-w-sm mb-2.5">
+                        รองรับไฟล์ภาพ JPG, PNG, WebP
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-              {/* Row 6: Tournament Description / Rewards */}
-              <div>
-                <label className="text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between gap-2">
-                  <div>
-                    <span>รายละเอียดการแข่งขัน / ของรางวัล / กำหนดการ</span>
-                    <span className="text-[11px] text-gray-500 font-light ml-1.5 hidden sm:inline">
-                      (แสดงในหน้าข้อมูลทัวร์นาเมนต์)
-                    </span>
-                  </div>
+                {/* Row 6: Tournament Description / Rewards */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between gap-2">
+                    <div>
+                      <span>รายละเอียดการแข่งขัน / ของรางวัล / กำหนดการ</span>
+                      <span className="text-[11px] text-gray-500 font-light ml-1.5 hidden sm:inline">
+                        (แสดงในหน้าข้อมูลทัวร์นาเมนต์)
+                      </span>
+                    </div>
 
-                  {/* ปุ่มลัดช่วยกรอกแพตเทิร์นของร้านอัตโนมัติ */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDescription(
-                        "รางวัลอันดับที่ 1-3 โปรโมเดือนนี้คนละ 4 ใบ+\nอันดับที่ 4 เป็นต้นไปคนละ 4 ใบ\nมี Lucky Draw 🍀 กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30",
-                      )
+                    {/* ปุ่มลัดช่วยกรอกแพตเทิร์นของร้านอัตโนมัติ */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDescription(
+                          "รางวัลอันดับที่ 1-3 โปรโมเดือนนี้คนละ 4 ใบ+\nอันดับที่ 4 เป็นต้นไปคนละ 4 ใบ\nมี Lucky Draw 🍀 กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30",
+                        )
+                      }
+                      className="text-[11px] text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 transition-colors"
+                    >
+                      + ใช้ข้อความตั้งต้นของร้าน
+                    </button>
+                  </label>
+
+                  <textarea
+                    rows={4}
+                    value={description?.replace(/\\n/g, "\n") || ""}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={
+                      "เช่น:\nรางวัลอันดับที่ 1-3 โปรโมเดือนนี้...\nมี Lucky Draw กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30"
                     }
-                    className="text-[11px] text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 transition-colors"
-                  >
-                    + ใช้ข้อความตั้งต้นของร้าน
-                  </button>
-                </label>
-
-                <textarea
-                  rows={4}
-                  value={description?.replace(/\\n/g, "\n") || ""}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={
-                    "เช่น:\nรางวัลอันดับที่ 1-3 โปรโมเดือนนี้...\nมี Lucky Draw กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30"
-                  }
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 resize-y"
-                />
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-white/[0.08]">
-                <div className="text-[11px] text-gray-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ข้อมูลทั้งหมดจะแสดงผลหน้ารายละเอียดการแข่งขัน</span>
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 resize-y"
+                  />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 text-gray-300 text-sm font-medium transition-colors"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4 stroke-[3]" />
-                    <span>
-                      {submitting ? "กำลังสร้าง..." : "สร้างทัวร์นาเมนต์"}
-                    </span>
-                  </button>
+                {/* Action buttons */}
+                <div className="flex items-center justify-between pt-4 border-t border-white/[0.08]">
+                  <div className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>ข้อมูลทั้งหมดจะแสดงผลหน้ารายละเอียดการแข่งขัน</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 text-gray-300 text-sm font-medium transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>
+                        {submitting ? "กำลังสร้าง..." : "สร้างทัวร์นาเมนต์"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
               </form>
             </div>
           </div>
@@ -1183,10 +1206,14 @@ export const HomePage: React.FC = () => {
 
             <p className="text-sm text-gray-300 leading-relaxed mb-6">
               คุณแน่ใจหรือไม่ว่าต้องการลบการแข่งขัน{" "}
-              <span className="font-bold text-rose-300">"{tournamentToDelete.name}"</span>?
+              <span className="font-bold text-rose-300">
+                "{tournamentToDelete.name}"
+              </span>
+              ?
               <br />
               <span className="text-xs text-rose-400/90 mt-2 block bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/20">
-                ⚠️ ข้อมูลผู้เข้าแข่งขัน รอบการแข่ง และผลการแข่งขันทั้งหมดจะถูกลบถาวรและไม่สามารถกู้คืนได้
+                ⚠️ ข้อมูลผู้เข้าแข่งขัน รอบการแข่ง
+                และผลการแข่งขันทั้งหมดจะถูกลบถาวรและไม่สามารถกู้คืนได้
               </span>
             </p>
 
@@ -1229,7 +1256,7 @@ export const HomePage: React.FC = () => {
           tournament={tournamentToEdit}
           onSaved={(updated) => {
             setTournaments((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t))
+              prev.map((t) => (t.id === updated.id ? updated : t)),
             );
           }}
         />

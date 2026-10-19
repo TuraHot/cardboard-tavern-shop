@@ -1,6 +1,6 @@
 import React from 'react';
 import { Player } from '../types';
-import { VANGUARD_NATIONS, getNationConfig } from '../utils/nations';
+import { VANGUARD_NATIONS, getNationConfig, hexToRgba } from '../utils/nations';
 import { BarChart3, Shield, Layers } from 'lucide-react';
 
 interface MetaAnalyticsProps {
@@ -76,7 +76,13 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
                 <div key={nationName} className="space-y-1">
                   <div className="flex items-center justify-between text-xs sm:text-sm">
                     <span className="font-medium text-gray-300 flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${config.dotColor}`} />
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: config.colorCode,
+                          boxShadow: `0 0 8px ${hexToRgba(config.colorCode, 0.7)}`,
+                        }}
+                      />
                       {config.name}
                     </span>
                     <span className="text-gray-400 font-mono">
@@ -85,8 +91,12 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
                   </div>
                   <div className="w-full h-2 rounded-full bg-gray-800 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${config.dotColor}`}
-                      style={{ width: `${percent}%` }}
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${percent}%`,
+                        backgroundColor: config.colorCode,
+                        boxShadow: `0 0 6px ${hexToRgba(config.colorCode, 0.4)}`,
+                      }}
                     />
                   </div>
                 </div>

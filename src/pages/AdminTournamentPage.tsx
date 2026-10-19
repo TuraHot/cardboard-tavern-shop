@@ -9,7 +9,8 @@ import {
   NationRow,
   BossRow,
 } from "../types";
-import { VANGUARD_NATIONS, getNationConfig } from "../utils/nations";
+import { VANGUARD_NATIONS, getNationConfig, syncNationsFromDb } from "../utils/nations";
+import { syncBossesFromDb } from "../utils/bosses";
 import { calculateStandings } from "../utils/tiebreaker";
 import { generateSwissPairings } from "../utils/pairing";
 import { Navbar } from "../components/Navbar";
@@ -92,8 +93,14 @@ export const AdminTournamentPage: React.FC = () => {
           .select("*")
           .order("name_en", { ascending: true }),
       ]);
-      if (nRes.data) setNations(nRes.data);
-      if (bRes.data) setBosses(bRes.data);
+      if (nRes.data) {
+        setNations(nRes.data);
+        syncNationsFromDb(nRes.data);
+      }
+      if (bRes.data) {
+        setBosses(bRes.data);
+        syncBossesFromDb(bRes.data);
+      }
     } catch (err) {
       console.error("Failed to load nations/bosses:", err);
     }
@@ -135,8 +142,14 @@ export const AdminTournamentPage: React.FC = () => {
       }
       setPlayers(pRes.data || []);
       setMatches(mRes.data || []);
-      if (nRes.data) setNations(nRes.data);
-      if (bRes.data) setBosses(bRes.data);
+      if (nRes.data) {
+        setNations(nRes.data);
+        syncNationsFromDb(nRes.data);
+      }
+      if (bRes.data) {
+        setBosses(bRes.data);
+        syncBossesFromDb(bRes.data);
+      }
     } catch (err) {
       console.error("Failed to load admin data:", err);
     } finally {
