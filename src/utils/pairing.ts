@@ -155,13 +155,22 @@ export function generateSwissPairings(
 
 /**
  * Recursive backtracking algorithm to find pairings without rematches
+ * with a safety iteration limit to prevent UI thread lock on large/dense player brackets.
  */
 function solveSwissBacktracking(
   remaining: Player[],
-  historySet: Set<string>
+  historySet: Set<string>,
+  stepCounter = { steps: 0 },
+  maxSteps = 2000
 ): [Player, Player][] | null {
   if (remaining.length === 0) return [];
   if (remaining.length % 2 !== 0) return null;
+
+  stepCounter.steps++;
+  if (stepCounter.steps > maxSteps) {
+    // Abort backtracking if search space is too deep and fallback to soft pairing
+    return null;
+  }
 
   const p1 = remaining[0];
   const candidates = remaining.slice(1);
@@ -176,7 +185,7 @@ function solveSwissBacktracking(
         ...candidates.slice(0, i),
         ...candidates.slice(i + 1),
       ];
-      const subResult = solveSwissBacktracking(nextRemaining, historySet);
+      const subResult = solveSwissBacktracking(nextRemaining, historySet, stepCounter, maxSteps);
       if (subResult !== null) {
         return [[p1, p2], ...subResult];
       }

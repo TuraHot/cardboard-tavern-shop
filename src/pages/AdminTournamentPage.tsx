@@ -691,7 +691,31 @@ export const AdminTournamentPage: React.FC = () => {
     );
   }
 
-  if (!tournament) return null;
+  if (!tournament) {
+    return (
+      <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-4 shadow-lg">
+            <AlertCircle className="w-10 h-10" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+            ไม่พบข้อมูลการแข่งขัน
+          </h2>
+          <p className="text-gray-400 text-sm max-w-md mb-6">
+            รหัสการแข่งขันใน URL อาจไม่ถูกต้อง หรือการแข่งขันนี้อาจถูกลบออกจากระบบแล้ว
+          </p>
+          <Link
+            to="/"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-sm shadow-[0_0_20px_rgba(245,158,11,0.25)] transition-all"
+          >
+            กลับสู่หน้าหลัก
+          </Link>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const isCurrentRoundFullyCompleted =
     tournament.current_round > 0 &&
@@ -1469,6 +1493,7 @@ export const AdminTournamentPage: React.FC = () => {
         isOpen={isLuckyDrawOpen}
         onClose={() => setIsLuckyDrawOpen(false)}
         players={players}
+        tournamentId={tournament.id}
       />
 
       {/* Override Match Result Modal */}
@@ -1496,10 +1521,24 @@ export const AdminTournamentPage: React.FC = () => {
             </div>
 
             {/* รายละเอียดคำเตือน */}
-            <p className="text-sm text-gray-300 leading-relaxed mb-6">
-              เมื่อจบการแข่งขันแล้ว ระบบจะสรุปอันดับตารางคะแนน
-              โดยจะไม่สามารถจับคู่รอบใหม่ได้อีก
+            <p className="text-sm text-gray-300 leading-relaxed mb-4">
+              เมื่อจบการแข่งขันแล้ว ระบบจะสรุปอันดับตารางคะแนนขั้นสุดท้าย
+              โดยจะไม่สามารถเปิดจับคู่รอบใหม่ได้อีก
             </p>
+
+            {hasPendingMatchesInCurrentRound && (
+              <div className="mb-5 p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2.5 shadow-inner">
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-rose-300 text-xs">
+                    ยังมีโต๊ะที่ยังไม่ได้บันทึกผลการแข่งในรอบที่ {tournament.current_round}
+                  </div>
+                  <div className="text-gray-300 mt-1 leading-relaxed">
+                    หากยืนยันจบการแข่งขันตอนนี้ โต๊ะที่ค้างอยู่จะไม่ได้รับคะแนนในรอบนี้ กรุณาตรวจสอบให้แน่ใจก่อนกดยืนยัน
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ปุ่มกด ยกเลิก / ยืนยัน */}
             <div className="flex items-center justify-end gap-3">

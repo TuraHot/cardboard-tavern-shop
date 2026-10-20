@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player } from '../types';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -11,20 +11,63 @@ interface LuckyDrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   players: Player[];
+  tournamentId?: string;
 }
 
 export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   isOpen,
   onClose,
   players,
+  tournamentId,
 }) => {
   const [activeOnly, setActiveOnly] = useState(true);
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
   const [winner, setWinner] = useState<Player | null>(null);
   const [currentDisplayPlayer, setCurrentDisplayPlayer] = useState<Player | null>(null);
-  const [drawHistory, setDrawHistory] = useState<Player[]>([]);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  const storageKey = tournamentId
+    ? `cardboard_tavern_luckydraw_${tournamentId}`
+    : null;
+
+  const [drawHistory, setDrawHistory] = useState<Player[]>(() => {
+    if (typeof window === "undefined" || !storageKey) return [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Re-sync with localStorage if tournamentId or isOpen changes
+  useEffect(() => {
+    if (!storageKey || !isOpen) return;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setDrawHistory(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+  }, [storageKey, isOpen]);
+
+  // Persist history changes to localStorage
+  const updateDrawHistory = (updater: (prev: Player[]) => Player[]) => {
+    setDrawHistory((prev) => {
+      const next = updater(prev);
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+      }
+      return next;
+    });
+  };
 
   // Exclude previous winners if option is active
   const previousWinnerIds = new Set(drawHistory.map((p) => p.id));
@@ -87,7 +130,7 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
         // Final winner
         setIsSpinning(false);
         setWinner(chosen);
-        setDrawHistory((prev) => [chosen, ...prev.filter((p) => p.id !== chosen.id)]);
+        updateDrawHistory((prev) => [chosen, ...prev.filter((p) => p.id !== chosen.id)]);
         sounds.fanfare();
         triggerConfetti();
       }
@@ -97,7 +140,7 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   };
 
   const handleRemoveWinnerFromHistory = (playerId: string) => {
-    setDrawHistory((prev) => prev.filter((p) => p.id !== playerId));
+    updateDrawHistory((prev) => prev.filter((p) => p.id !== playerId));
     if (winner?.id === playerId) {
       setWinner(null);
     }
@@ -108,6 +151,13 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   };
 
   const handleConfirmResetHistory = () => {
+    if (storageKey) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
     setDrawHistory([]);
     setWinner(null);
     setCurrentDisplayPlayer(null);
