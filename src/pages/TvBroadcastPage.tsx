@@ -139,13 +139,17 @@ export const TvBroadcastPage: React.FC = () => {
   const currentRoundMatches = matches.filter(
     (m) => m.round_number === tournament.current_round
   );
-  const completedRoundMatches =
-    tournament.status === 'completed'
-      ? matches
-      : tournament.status === 'ongoing'
-        ? matches.filter((m) => m.round_number < tournament.current_round)
-        : [];
-  const standings = calculateStandings(players, completedRoundMatches);
+  const isCurrentRoundFullyCompleted =
+    tournament.current_round > 0 &&
+    currentRoundMatches.length > 0 &&
+    currentRoundMatches.every((m) => m.status === 'completed');
+
+  const matchesForStandings =
+    tournament.status === 'completed' || isCurrentRoundFullyCompleted
+      ? matches.filter((m) => m.round_number <= tournament.current_round)
+      : matches.filter((m) => m.round_number < tournament.current_round);
+
+  const standings = calculateStandings(players, matchesForStandings);
   const playerMobileUrl = `${window.location.origin}/tournament/${tournament.id}`;
 
   return (

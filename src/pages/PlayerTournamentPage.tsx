@@ -145,14 +145,17 @@ export const PlayerTournamentPage: React.FC = () => {
     (m) => m.round_number === tournament.current_round,
   );
 
-  const completedRoundMatches =
-    tournament.status === "completed"
-      ? matches
-      : tournament.status === "ongoing"
-        ? matches.filter((m) => m.round_number < tournament.current_round)
-        : [];
+  const isCurrentRoundFullyCompleted =
+    tournament.current_round > 0 &&
+    currentRoundMatches.length > 0 &&
+    currentRoundMatches.every((m) => m.status === "completed");
 
-  const standings = calculateStandings(players, completedRoundMatches);
+  const matchesForStandings =
+    tournament.status === "completed" || isCurrentRoundFullyCompleted
+      ? matches.filter((m) => m.round_number <= tournament.current_round)
+      : matches.filter((m) => m.round_number < tournament.current_round);
+
+  const standings = calculateStandings(players, matchesForStandings);
 
   return (
     <div className="min-h-screen bg-[#06080d] text-gray-100 flex flex-col">
@@ -316,6 +319,22 @@ export const PlayerTournamentPage: React.FC = () => {
         {/* Tab 2: Standings View */}
         {activeTab === "standings" && (
           <div className="space-y-4">
+            {tournament.status === "ongoing" && !isCurrentRoundFullyCompleted && (
+              <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  ตารางคะแนนทางการอิงตามรอบที่ {Math.max(0, tournament.current_round - 1)} (คะแนนรอบที่ {tournament.current_round} จะอัปเดตอัตโนมัติเมื่อแข่งขันเสร็จครบทุกโต๊ะ)
+                </span>
+              </div>
+            )}
+            {tournament.status === "ongoing" && isCurrentRoundFullyCompleted && (
+              <div className="px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  ตารางคะแนนล่าสุดรวมผลการแข่งรอบที่ {tournament.current_round} เรียบร้อยแล้ว
+                </span>
+              </div>
+            )}
             <StandingsTable
               standings={standings}
               showNationAndBoss={tournament.status === "completed"}

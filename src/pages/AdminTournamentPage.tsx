@@ -42,6 +42,8 @@ import {
   UserCheck,
   Tv,
   AlertTriangle,
+  AlertCircle,
+  CheckCircle,
   BarChart3,
   Edit2,
   Shield,
@@ -245,7 +247,7 @@ export const AdminTournamentPage: React.FC = () => {
   );
 
   const handleGenerateNextRound = async () => {
-    if (!tournament) return;
+    if (!tournament || isGeneratingRound) return;
     const nextRoundNum = tournament.current_round + 1;
 
     if (nextRoundNum > tournament.max_rounds) {
@@ -253,8 +255,35 @@ export const AdminTournamentPage: React.FC = () => {
       return;
     }
 
+    if (tournament.current_round > 0 && hasPendingMatchesInCurrentRound) {
+      alert(
+        `ยังมีโต๊ะที่ยังไม่ได้บันทึกผลในรอบที่ ${tournament.current_round} กรุณากรอกผลให้ครบทุกโต๊ะก่อนจับคู่รอบถัดไป`,
+      );
+      return;
+    }
+
+    const activePlayers = players.filter((p) => !p.is_dropped);
+    if (activePlayers.length < 2) {
+      alert("ต้องมีผู้เล่นที่ยังอยู่ในการแข่งขันอย่างน้อย 2 คนจึงจะเริ่มรอบได้");
+      return;
+    }
+
     try {
       setIsGeneratingRound(true);
+
+      // Concurrency check: verify no matches for nextRoundNum have already been created
+      const { data: existingMatches, error: checkErr } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("tournament_id", tournament.id)
+        .eq("round_number", nextRoundNum);
+
+      if (checkErr) throw checkErr;
+      if (existingMatches && existingMatches.length > 0) {
+        alert(`มีคู่แข่งขันรอบที่ ${nextRoundNum} อยู่ในระบบแล้ว กรุณารีเฟรชหน้าจอ`);
+        await fetchData();
+        return;
+      }
 
       const pairingResult = generateSwissPairings(
         tournament.id,
@@ -275,7 +304,20 @@ export const AdminTournamentPage: React.FC = () => {
           .eq("id", pairingResult.byePlayerId);
       }
 
-      const durationMs = tournament.round_duration_minutes * 60 * 1000;
+      const durationSec = tournament.round_duration_minutes * 60;
+      let timerHandledByRpc = false;
+
+      // Try server timer RPC first (syncs with Server timestamp NOW())
+      const { error: rpcErr } = await supabase.rpc("start_tournament_timer", {
+        p_tournament_id: tournament.id,
+        p_seconds: durationSec,
+      });
+
+      if (!rpcErr) {
+        timerHandledByRpc = true;
+      }
+
+      const durationMs = durationSec * 1000;
       const endsAt = new Date(Date.now() + durationMs).toISOString();
 
       const { error: tErr } = await supabase
@@ -283,8 +325,12 @@ export const AdminTournamentPage: React.FC = () => {
         .update({
           status: "ongoing",
           current_round: nextRoundNum,
-          timer_ends_at: endsAt,
-          timer_paused_remaining_seconds: null,
+          ...(timerHandledByRpc
+            ? {}
+            : {
+                timer_ends_at: endsAt,
+                timer_paused_remaining_seconds: null,
+              }),
         })
         .eq("id", tournament.id);
 
@@ -330,15 +376,23 @@ export const AdminTournamentPage: React.FC = () => {
         ? tournament.timer_paused_remaining_seconds
         : tournament.round_duration_minutes * 60;
 
-    const endsAt = new Date(Date.now() + remainingSec * 1000).toISOString();
+    // 1. Try server timer RPC first (syncs with Server timestamp NOW())
+    const { error: rpcError } = await supabase.rpc("start_tournament_timer", {
+      p_tournament_id: tournament.id,
+      p_seconds: remainingSec,
+    });
 
-    await supabase
-      .from("tournaments")
-      .update({
-        timer_ends_at: endsAt,
-        timer_paused_remaining_seconds: null,
-      })
-      .eq("id", tournament.id);
+    // 2. Fallback to client timestamp if RPC is not installed yet
+    if (rpcError) {
+      const endsAt = new Date(Date.now() + remainingSec * 1000).toISOString();
+      await supabase
+        .from("tournaments")
+        .update({
+          timer_ends_at: endsAt,
+          timer_paused_remaining_seconds: null,
+        })
+        .eq("id", tournament.id);
+    }
 
     await fetchData();
   };
@@ -376,14 +430,45 @@ export const AdminTournamentPage: React.FC = () => {
 
   const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || !formName.trim()) return;
+    if (!id || !tournament || !formName.trim() || submittingPlayer) return;
+
+    const maxCap = tournament.max_players || 20;
+    if (players.length >= maxCap) {
+      alert(`ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`);
+      return;
+    }
 
     try {
       setSubmittingPlayer(true);
-      const nextLuckyNumber =
+
+      // Re-verify current player count from DB to prevent race condition overflow
+      const { count: currentDbCount, error: countErr } = await supabase
+        .from("players")
+        .select("id", { count: "exact", head: true })
+        .eq("tournament_id", id);
+
+      if (countErr) throw countErr;
+      if ((currentDbCount ?? players.length) >= maxCap) {
+        alert(`ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`);
+        setIsAddPlayerOpen(false);
+        await fetchData();
+        return;
+      }
+
+      // Query latest highest lucky draw number directly from DB to prevent collisions
+      const { data: latestLuckyData } = await supabase
+        .from("players")
+        .select("lucky_draw_number")
+        .eq("tournament_id", id)
+        .order("lucky_draw_number", { ascending: false })
+        .limit(1);
+
+      const dbMaxLucky = latestLuckyData?.[0]?.lucky_draw_number ?? 0;
+      const localMaxLucky =
         players.length > 0
-          ? Math.max(...players.map((p) => p.lucky_draw_number || 0)) + 1
-          : 1;
+          ? Math.max(...players.map((p) => p.lucky_draw_number || 0))
+          : 0;
+      const nextLuckyNumber = Math.max(dbMaxLucky, localMaxLucky) + 1;
 
       const matchedNation = formNation
         ? nations.find(
@@ -461,12 +546,43 @@ export const AdminTournamentPage: React.FC = () => {
   };
 
   const handleConfirmToggleDropPlayer = async () => {
-    if (!playerToToggleDrop) return;
+    if (!playerToToggleDrop || !tournament) return;
     try {
       setIsTogglingDrop(true);
+
+      // If dropping an active player who is currently playing in a pending match,
+      // auto-award the win to their opponent so the round is not blocked.
+      const isDropping = !playerToToggleDrop.is_dropped;
+      if (isDropping && tournament.status === "ongoing") {
+        const pendingMatch = currentRoundMatches.find(
+          (m) =>
+            m.status === "pending" &&
+            (m.player1_id === playerToToggleDrop.id ||
+              m.player2_id === playerToToggleDrop.id),
+        );
+
+        if (pendingMatch) {
+          const opponentId =
+            pendingMatch.player1_id === playerToToggleDrop.id
+              ? pendingMatch.player2_id
+              : pendingMatch.player1_id;
+
+          if (opponentId) {
+            await supabase
+              .from("matches")
+              .update({
+                winner_id: opponentId,
+                is_double_loss: false,
+                status: "completed",
+              })
+              .eq("id", pendingMatch.id);
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("players")
-        .update({ is_dropped: !playerToToggleDrop.is_dropped })
+        .update({ is_dropped: isDropping })
         .eq("id", playerToToggleDrop.id);
 
       if (error) throw error;
@@ -480,7 +596,27 @@ export const AdminTournamentPage: React.FC = () => {
   };
 
   const handleConfirmDeletePlayer = async () => {
-    if (!playerToDelete) return;
+    if (!playerToDelete || !tournament) return;
+    if (tournament.status !== "registering") {
+      alert(
+        "ไม่สามารถลบผู้เล่นระหว่างหรือหลังการแข่งขันได้ เพื่อไม่ให้ประวัติการแข่งเสียหาย กรุณาใช้การ 'ดรอป' ผู้เล่นแทน",
+      );
+      setPlayerToDelete(null);
+      return;
+    }
+
+    const hasMatches = matches.some(
+      (m) =>
+        m.player1_id === playerToDelete.id || m.player2_id === playerToDelete.id,
+    );
+    if (hasMatches) {
+      alert(
+        "ผู้เล่นคนนี้มีประวัติการแข่งขันในระบบแล้ว ไม่สามารถลบได้ เพื่อไม่ให้สถิติของคู่แข่งเสียหาย กรุณาใช้การ 'ดรอป' แทน",
+      );
+      setPlayerToDelete(null);
+      return;
+    }
+
     try {
       setIsDeletingPlayer(true);
       const { error } = await supabase
@@ -557,7 +693,30 @@ export const AdminTournamentPage: React.FC = () => {
 
   if (!tournament) return null;
 
-  const standings = calculateStandings(players, matches);
+  const isCurrentRoundFullyCompleted =
+    tournament.current_round > 0 &&
+    currentRoundMatches.length > 0 &&
+    currentRoundMatches.every((m) => m.status === "completed");
+
+  const matchesForStandings =
+    tournament.status === "completed" || isCurrentRoundFullyCompleted
+      ? matches.filter((m) => m.round_number <= tournament.current_round)
+      : matches.filter((m) => m.round_number < tournament.current_round);
+
+  const standings = calculateStandings(players, matchesForStandings);
+
+  const pendingMatchForDrop =
+    playerToToggleDrop &&
+    !playerToToggleDrop.is_dropped &&
+    tournament.status === "ongoing"
+      ? currentRoundMatches.find(
+          (m) =>
+            m.status === "pending" &&
+            (m.player1_id === playerToToggleDrop.id ||
+              m.player2_id === playerToToggleDrop.id),
+        )
+      : undefined;
+
   const displayedMatches = matches.filter(
     (m) => m.round_number === selectedRoundFilter,
   );
@@ -887,16 +1046,36 @@ export const AdminTournamentPage: React.FC = () => {
 
                 {tournament.status === "registering" && (
                   <button
+                    disabled={players.length >= (tournament.max_players || 20)}
                     onClick={() => {
+                      if (players.length >= (tournament.max_players || 20)) {
+                        alert(
+                          `ผู้เล่นเต็มขีดจำกัดสูงสุดแล้ว (${tournament.max_players || 20} คน)`,
+                        );
+                        return;
+                      }
                       setFormName("");
                       setFormDeckBoss("");
                       setFormNation("");
                       setIsAddPlayerOpen(true);
                     }}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-all"
+                    className={`px-4 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-md ${
+                      players.length >= (tournament.max_players || 20)
+                        ? "bg-white/[0.04] text-gray-500 border border-white/5 cursor-not-allowed"
+                        : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95"
+                    }`}
+                    title={
+                      players.length >= (tournament.max_players || 20)
+                        ? `ผู้เล่นเต็มโควตาแล้ว (${players.length}/${tournament.max_players || 20} คน)`
+                        : "เพิ่มผู้เล่นใหม่"
+                    }
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
-                    <span>เพิ่มผู้เล่น</span>
+                    <span>
+                      {players.length >= (tournament.max_players || 20)
+                        ? `ผู้เล่นเต็ม (${players.length}/${tournament.max_players || 20})`
+                        : `เพิ่มผู้เล่น (${players.length}/${tournament.max_players || 20})`}
+                    </span>
                   </button>
                 )}
               </div>
@@ -1014,6 +1193,22 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 3: Standings */}
         {activeTab === "standings" && (
           <div>
+            {tournament.status === "ongoing" && !isCurrentRoundFullyCompleted && (
+              <div className="mb-4 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  ตารางคะแนนทางการอิงตามรอบที่ {Math.max(0, tournament.current_round - 1)} ที่เสร็จสิ้นแล้ว (คะแนนรอบที่ {tournament.current_round} กำลังแข่งขัน และจะอัปเดตอย่างเป็นทางการพร้อมกันทุกจอเมื่อแข่งครบทุกโต๊ะ)
+                </span>
+              </div>
+            )}
+            {tournament.status === "ongoing" && isCurrentRoundFullyCompleted && (
+              <div className="mb-4 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  ตารางคะแนนล่าสุดรวมผลการแข่งรอบที่ {tournament.current_round} ครบถ้วนแล้ว (บันทึกผลครบทุกโต๊ะแล้ว)
+                </span>
+              </div>
+            )}
             <StandingsTable
               standings={standings}
               onExportPdf={
@@ -1386,7 +1581,9 @@ export const AdminTournamentPage: React.FC = () => {
         warningText={
           playerToToggleDrop?.is_dropped
             ? "ผู้เล่นจะถูกนำมาร่วมจับคู่แข่งขันในรอบถัดไปตามปกติ"
-            : "ผู้เล่นจะไม่ถูกนำมาร่วมจับคู่แข่งขันในรอบถัดไป แต่คะแนนในรอบที่ผ่านมาจะยังคงถูกบันทึกไว้"
+            : pendingMatchForDrop
+              ? `⚠️ ผู้เล่นมีแมตช์ที่กำลังแข่งขันในรอบปัจจุบัน (โต๊ะที่ ${pendingMatchForDrop.table_number}) ระบบจะปรับให้คู่แข่งชนะโดยอัตโนมัติ เพื่อไม่ให้ค้างผลการแข่งขันในรอบนี้`
+              : "ผู้เล่นจะไม่ถูกนำมาร่วมจับคู่แข่งขันในรอบถัดไป แต่คะแนนในรอบที่ผ่านมาจะยังคงถูกบันทึกไว้"
         }
         description={
           <span>
@@ -1483,6 +1680,7 @@ export const AdminTournamentPage: React.FC = () => {
         isOpen={isEditTournamentOpen}
         onClose={() => setIsEditTournamentOpen(false)}
         tournament={tournament}
+        currentPlayersCount={players.length}
         onSaved={(updated) => {
           setTournament(updated);
         }}

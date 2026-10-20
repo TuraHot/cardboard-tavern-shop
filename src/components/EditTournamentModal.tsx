@@ -23,6 +23,7 @@ interface EditTournamentModalProps {
   onClose: () => void;
   tournament: Tournament | null;
   onSaved: (updated: Tournament) => void;
+  currentPlayersCount?: number;
 }
 
 const toLocalDatetimeInput = (dateStr?: string | null) => {
@@ -49,6 +50,7 @@ export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   onClose,
   tournament,
   onSaved,
+  currentPlayersCount,
 }) => {
   const [name, setName] = useState('');
   const [format, setFormat] = useState<TournamentFormat>('Standard TH');
@@ -144,14 +146,44 @@ export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         }
       }
 
+      const numMaxPlayers = Math.floor(Number(maxPlayers));
+      const minAllowedPlayers = currentPlayersCount ? Math.max(2, currentPlayersCount) : 2;
+      if (numMaxPlayers < minAllowedPlayers) {
+        alert(
+          currentPlayersCount
+            ? `ไม่สามารถตั้งค่าผู้เล่นสูงสุดน้อยกว่า ${currentPlayersCount} คนได้ เนื่องจากมีผู้เล่นลงทะเบียนแล้ว ${currentPlayersCount} คน`
+            : "จำนวนผู้เล่นสูงสุดต้องมีอย่างน้อย 2 คน"
+        );
+        return;
+      }
+
+      const numMaxRounds = Math.floor(Number(maxRounds));
+      const minAllowedRounds = tournament.current_round ? Math.max(1, tournament.current_round) : 1;
+      if (numMaxRounds < minAllowedRounds) {
+        alert(
+          tournament.current_round
+            ? `ไม่สามารถตั้งค่ารอบสูงสุดน้อยกว่า ${tournament.current_round} รอบได้ เนื่องจากปัจจุบันกำลังแข่งขัน/แข่งขันไปถึงรอบที่ ${tournament.current_round} แล้ว`
+            : "จำนวนรอบแข่งขันสูงสุดต้องมีอย่างน้อย 1 รอบ"
+        );
+        return;
+      }
+
+      const numRoundDuration = Math.floor(Number(roundDuration));
+      if (numRoundDuration < 5) {
+        alert("เวลาการแข่งขันต่อรอบต้องไม่น้อยกว่า 5 นาที");
+        return;
+      }
+
+      const numEntryFee = Math.max(0, Number(entryFee) || 0);
+
       const updatePayload = {
         name: name.trim(),
         format,
         event_date: eventDate ? new Date(eventDate).toISOString() : tournament.event_date,
-        entry_fee: Number(entryFee),
-        max_players: Number(maxPlayers),
-        max_rounds: Number(maxRounds),
-        round_duration_minutes: Number(roundDuration),
+        entry_fee: numEntryFee,
+        max_players: numMaxPlayers,
+        max_rounds: numMaxRounds,
+        round_duration_minutes: numRoundDuration,
         store_name: storeName.trim(),
         location: location.trim(),
         description: description.trim(),
@@ -261,20 +293,27 @@ export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   step="5"
                   required
                   value={entryFee}
-                  onChange={(e) => setEntryFee(Number(e.target.value))}
+                  onChange={(e) => setEntryFee(Math.max(0, Number(e.target.value)))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-200 mb-1.5 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-amber-400" />
-                  <span>จำนวนผู้เล่นสูงสุด (คน)</span>
+                <label className="block text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-amber-400" />
+                    <span>จำนวนผู้เล่นสูงสุด (คน)</span>
+                  </div>
+                  {currentPlayersCount !== undefined && currentPlayersCount > 0 && (
+                    <span className="text-[11px] text-amber-400 font-semibold">
+                      (สมัครแล้ว {currentPlayersCount} คน)
+                    </span>
+                  )}
                 </label>
                 <input
                   type="number"
-                  min="4"
-                  max="128"
+                  min={currentPlayersCount ? Math.max(2, currentPlayersCount) : 2}
+                  max="256"
                   required
                   value={maxPlayers}
                   onChange={(e) => setMaxPlayers(Number(e.target.value))}
@@ -286,14 +325,21 @@ export const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
             {/* Max Rounds & Round Duration */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-200 mb-1.5 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-amber-400" />
-                  <span>จำนวนรอบแข่งขันสูงสุด (Rounds)</span>
+                <label className="block text-xs font-semibold text-gray-200 mb-1.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span>จำนวนรอบแข่งขันสูงสุด</span>
+                  </div>
+                  {tournament?.current_round !== undefined && tournament.current_round > 0 && (
+                    <span className="text-[11px] text-amber-400 font-semibold">
+                      (รอบปัจจุบัน {tournament.current_round})
+                    </span>
+                  )}
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  max="10"
+                  min={tournament?.current_round ? Math.max(1, tournament.current_round) : 1}
+                  max="15"
                   required
                   value={maxRounds}
                   onChange={(e) => setMaxRounds(Number(e.target.value))}

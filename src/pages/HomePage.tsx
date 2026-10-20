@@ -245,15 +245,15 @@ export const HomePage: React.FC = () => {
       const fullPayload = {
         name: name.trim(),
         format,
-        max_rounds: maxRounds,
-        round_duration_minutes: roundDuration,
+        max_rounds: Math.max(1, Number(maxRounds) || 4),
+        round_duration_minutes: Math.max(5, Number(roundDuration) || 30),
         status: "registering" as const,
         current_round: 0,
         event_date: eventDate
           ? new Date(eventDate).toISOString()
           : new Date().toISOString(),
-        entry_fee: Number(entryFee) || 70,
-        max_players: Number(maxPlayers) || 20,
+        entry_fee: Math.max(0, Number(entryFee) || 0),
+        max_players: Math.max(2, Number(maxPlayers) || 20),
         store_name: storeName.trim() || "Cardboard Tavern",
         location: location.trim() || "Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)",
         banner_url: finalBannerUrl,
@@ -1254,6 +1254,7 @@ export const HomePage: React.FC = () => {
           isOpen={Boolean(tournamentToEdit)}
           onClose={() => setTournamentToEdit(null)}
           tournament={tournamentToEdit}
+          currentPlayersCount={tournamentToEdit ? (playerCounts[tournamentToEdit.id] || 0) : 0}
           onSaved={(updated) => {
             setTournaments((prev) =>
               prev.map((t) => (t.id === updated.id ? updated : t)),
