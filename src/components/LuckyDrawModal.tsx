@@ -12,6 +12,7 @@ interface LuckyDrawModalProps {
   onClose: () => void;
   players: Player[];
   tournamentId?: string;
+  format?: string | null;
 }
 
 export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
@@ -19,6 +20,7 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
   onClose,
   players,
   tournamentId,
+  format,
 }) => {
   const [activeOnly, setActiveOnly] = useState(true);
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
@@ -272,6 +274,7 @@ export const LuckyDrawModal: React.FC<LuckyDrawModalProps> = ({
                 <NationBadge
                   nation={(winner ? winner.nation : currentDisplayPlayer?.nation) || 'Other'}
                   deckBoss={winner ? winner.deck_boss : currentDisplayPlayer?.deck_boss}
+                  format={format}
                   size="md"
                 />
               </div>

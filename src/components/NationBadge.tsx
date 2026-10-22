@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getNationConfig, hexToRgba } from '../utils/nations';
-import { getBossThaiName } from '../utils/bosses';
+import { getBossThaiName, getBossEnName, isJpFormat } from '../utils/bosses';
 
 interface NationBadgeProps {
   nation: string;
   deckBoss?: string | null;
   size?: 'sm' | 'md' | 'lg';
   showDeckBoss?: boolean;
+  format?: string | null;
 }
 
 export const NationBadge: React.FC<NationBadgeProps> = ({
@@ -14,6 +15,7 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
   deckBoss,
   size = 'md',
   showDeckBoss = true,
+  format,
 }) => {
   const config = getNationConfig(nation);
   const [currentImgSrc, setCurrentImgSrc] = useState<string | undefined>(
@@ -54,7 +56,19 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
       }
     : {};
 
-  const thaiBoss = deckBoss ? getBossThaiName(deckBoss) : '';
+  const isJP = isJpFormat(format);
+  const nationDisplayName = isJP ? config.name : (config.thaiName || config.name);
+  const bossDisplayName = deckBoss
+    ? isJP
+      ? getBossEnName(deckBoss) || deckBoss
+      : getBossThaiName(deckBoss) || deckBoss
+    : '';
+
+  const secondaryBoss = deckBoss
+    ? isJP
+      ? getBossThaiName(deckBoss)
+      : getBossEnName(deckBoss)
+    : '';
 
   if (!nation && !deckBoss) {
     return <span className="text-xs text-gray-500 font-light">-</span>;
@@ -64,9 +78,9 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
     return (
       <span
         className={`text-[11px] px-2.5 py-0.5 rounded-md bg-black/40 border border-white/10 text-amber-200/90 font-mono flex items-center gap-1 shadow-inner ${sizeClasses}`}
-        title={thaiBoss && thaiBoss !== deckBoss ? `${deckBoss} (${thaiBoss})` : deckBoss || undefined}
+        title={secondaryBoss && secondaryBoss !== bossDisplayName ? `${bossDisplayName} (${secondaryBoss})` : bossDisplayName || undefined}
       >
-        <span className="tracking-tight">{thaiBoss}</span>
+        <span className="tracking-tight">{bossDisplayName}</span>
       </span>
     );
   }
@@ -76,7 +90,7 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
       <span
         style={badgeStyle}
         className={`inline-flex items-center font-semibold rounded-md border tracking-wide transition-all backdrop-blur-md ${config.badgeClass} ${sizeClasses}`}
-        title={`${config.name} (${config.thaiName})`}
+        title={isJP ? `${config.name} (${config.thaiName})` : `${config.thaiName} (${config.name})`}
       >
         {currentImgSrc && !hasError ? (
           <img
@@ -89,15 +103,15 @@ export const NationBadge: React.FC<NationBadgeProps> = ({
         ) : (
           <span className="text-xs opacity-90">{config.iconSymbol}</span>
         )}
-        <span>{config.name}</span>
+        <span>{nationDisplayName}</span>
       </span>
 
       {showDeckBoss && deckBoss && (
         <span
           className={`text-[11px] px-2.5 py-0.5 rounded-md bg-black/40 border border-white/10 text-amber-200/90 font-mono flex items-center gap-1 shadow-inner ${config.badgeClass} ${sizeClasses}`}
-          title={thaiBoss && thaiBoss !== deckBoss ? `${deckBoss} (${thaiBoss})` : deckBoss}
+          title={secondaryBoss && secondaryBoss !== bossDisplayName ? `${bossDisplayName} (${secondaryBoss})` : bossDisplayName}
         >
-          <span className="tracking-tight">{thaiBoss}</span>
+          <span className="tracking-tight">{bossDisplayName}</span>
         </span>
       )}
     </div>

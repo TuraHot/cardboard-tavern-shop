@@ -28,6 +28,7 @@ import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
 import { EditTournamentModal } from "../components/EditTournamentModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { DeckBossAutocomplete } from "../components/DeckBossAutocomplete";
 import { exportPairingsPdf, exportStandingsPdf } from "../utils/pdfExport";
 import { Footer } from "../components/Footer";
 import {
@@ -47,7 +48,17 @@ import {
   BarChart3,
   Edit2,
   Shield,
+  History,
 } from "lucide-react";
+
+interface PendingPastRoundEdit {
+  match: Match;
+  winnerId: string | null;
+  isDoubleLoss: boolean;
+  p1Name: string;
+  p2Name?: string;
+  winnerName?: string;
+}
 
 export const AdminTournamentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,10 +88,18 @@ export const AdminTournamentPage: React.FC = () => {
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
   const [isEditTournamentOpen, setIsEditTournamentOpen] = useState(false);
 
+  // Past round edit confirmation modal states
+  const [pendingPastRoundEdit, setPendingPastRoundEdit] =
+    useState<PendingPastRoundEdit | null>(null);
+  const [isExecutingPastRoundEdit, setIsExecutingPastRoundEdit] =
+    useState(false);
+
   // Delete & Drop player confirmation modal states
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [isDeletingPlayer, setIsDeletingPlayer] = useState(false);
-  const [playerToToggleDrop, setPlayerToToggleDrop] = useState<Player | null>(null);
+  const [playerToToggleDrop, setPlayerToToggleDrop] = useState<Player | null>(
+    null,
+  );
   const [isTogglingDrop, setIsTogglingDrop] = useState(false);
 
   // Nations & Bosses state
@@ -264,7 +283,9 @@ export const AdminTournamentPage: React.FC = () => {
 
     const activePlayers = players.filter((p) => !p.is_dropped);
     if (activePlayers.length < 2) {
-      alert("ต้องมีผู้เล่นที่ยังอยู่ในการแข่งขันอย่างน้อย 2 คนจึงจะเริ่มรอบได้");
+      alert(
+        "ต้องมีผู้เล่นที่ยังอยู่ในการแข่งขันอย่างน้อย 2 คนจึงจะเริ่มรอบได้",
+      );
       return;
     }
 
@@ -280,7 +301,9 @@ export const AdminTournamentPage: React.FC = () => {
 
       if (checkErr) throw checkErr;
       if (existingMatches && existingMatches.length > 0) {
-        alert(`มีคู่แข่งขันรอบที่ ${nextRoundNum} อยู่ในระบบแล้ว กรุณารีเฟรชหน้าจอ`);
+        alert(
+          `มีคู่แข่งขันรอบที่ ${nextRoundNum} อยู่ในระบบแล้ว กรุณารีเฟรชหน้าจอ`,
+        );
         await fetchData();
         return;
       }
@@ -434,7 +457,9 @@ export const AdminTournamentPage: React.FC = () => {
 
     const maxCap = tournament.max_players || 20;
     if (players.length >= maxCap) {
-      alert(`ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`);
+      alert(
+        `ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`,
+      );
       return;
     }
 
@@ -449,7 +474,9 @@ export const AdminTournamentPage: React.FC = () => {
 
       if (countErr) throw countErr;
       if ((currentDbCount ?? players.length) >= maxCap) {
-        alert(`ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`);
+        alert(
+          `ไม่สามารถเพิ่มผู้เล่นได้: จำนวนผู้เล่นถึงขีดจำกัดสูงสุดแล้ว (${maxCap} คน)`,
+        );
         setIsAddPlayerOpen(false);
         await fetchData();
         return;
@@ -607,7 +634,8 @@ export const AdminTournamentPage: React.FC = () => {
 
     const hasMatches = matches.some(
       (m) =>
-        m.player1_id === playerToDelete.id || m.player2_id === playerToDelete.id,
+        m.player1_id === playerToDelete.id ||
+        m.player2_id === playerToDelete.id,
     );
     if (hasMatches) {
       alert(
@@ -663,19 +691,136 @@ export const AdminTournamentPage: React.FC = () => {
     winnerId: string | null,
     isDoubleLoss: boolean,
   ) => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || !tournament) return;
 
-    const { error } = await supabase
-      .from("matches")
-      .update({
-        winner_id: winnerId,
-        is_double_loss: isDoubleLoss,
-        status: "completed",
-      })
-      .eq("id", selectedMatch.id);
+    const isCurrentActiveRound =
+      tournament.status === "ongoing" &&
+      selectedMatch.round_number === tournament.current_round;
 
-    if (error) throw error;
-    await fetchData();
+    // 1. Current active round: normal in-place update
+    if (isCurrentActiveRound) {
+      const { error } = await supabase
+        .from("matches")
+        .update({
+          winner_id: winnerId,
+          is_double_loss: isDoubleLoss,
+          status: "completed",
+        })
+        .eq("id", selectedMatch.id);
+
+      if (error) throw error;
+      await fetchData();
+      return;
+    }
+
+    // 2. Past round (or completed tournament)
+    // Check if result actually changed
+    const isSameWinner = selectedMatch.winner_id === winnerId;
+    const isSameDoubleLoss =
+      Boolean(selectedMatch.is_double_loss) === Boolean(isDoubleLoss);
+    const isCompleted = selectedMatch.status === "completed";
+
+    if (isCompleted && isSameWinner && isSameDoubleLoss) {
+      // Nothing changed, keep everything intact without prompting or re-pairing
+      return;
+    }
+
+    const p1 = players.find((p) => p.id === selectedMatch.player1_id);
+    const p2 = selectedMatch.player2_id
+      ? players.find((p) => p.id === selectedMatch.player2_id)
+      : undefined;
+    const winnerObj = winnerId ? players.find((p) => p.id === winnerId) : undefined;
+
+    setPendingPastRoundEdit({
+      match: selectedMatch,
+      winnerId,
+      isDoubleLoss,
+      p1Name: p1?.name || "ไม่พบชื่อ",
+      p2Name: p2?.name,
+      winnerName: winnerObj?.name,
+    });
+  };
+
+  const handleConfirmPastRoundEditAndRepair = async () => {
+    if (!pendingPastRoundEdit || !tournament) return;
+    const { match: editedMatch, winnerId, isDoubleLoss } = pendingPastRoundEdit;
+    const editedRound = editedMatch.round_number;
+
+    try {
+      setIsExecutingPastRoundEdit(true);
+
+      // 1. Update the edited match
+      const { error: updateMatchErr } = await supabase
+        .from("matches")
+        .update({
+          winner_id: winnerId,
+          is_double_loss: isDoubleLoss,
+          status: "completed",
+        })
+        .eq("id", editedMatch.id);
+
+      if (updateMatchErr) throw updateMatchErr;
+
+      // 2. Delete all matches from subsequent rounds (round_number > editedRound)
+      const { error: deleteMatchesErr } = await supabase
+        .from("matches")
+        .delete()
+        .eq("tournament_id", tournament.id)
+        .gt("round_number", editedRound);
+
+      if (deleteMatchesErr) throw deleteMatchesErr;
+
+      // 3. Compute remaining matches up to editedRound (including our updated match)
+      const remainingMatches = matches
+        .filter((m) => m.round_number <= editedRound && m.id !== editedMatch.id)
+        .concat({
+          ...editedMatch,
+          winner_id: winnerId,
+          is_double_loss: isDoubleLoss,
+          status: "completed",
+        });
+
+      // 4. Recalculate which players legitimately received a BYE in rounds <= editedRound
+      const byePlayerIds = new Set<string>();
+      remainingMatches.forEach((m) => {
+        if ((m.is_bye || m.is_Bye || !m.player2_id) && m.player1_id) {
+          byePlayerIds.add(m.player1_id);
+        }
+      });
+
+      for (const p of players) {
+        const shouldHaveBye = byePlayerIds.has(p.id);
+        if (Boolean(p.has_received_bye) !== shouldHaveBye) {
+          await supabase
+            .from("players")
+            .update({ has_received_bye: shouldHaveBye })
+            .eq("id", p.id);
+        }
+      }
+
+      // 5. Update tournament status to ongoing, rollback current_round to editedRound, and reset timer
+      const { error: tErr } = await supabase
+        .from("tournaments")
+        .update({
+          status: "ongoing",
+          current_round: editedRound,
+          timer_ends_at: null,
+          timer_paused_remaining_seconds: tournament.round_duration_minutes * 60,
+        })
+        .eq("id", tournament.id);
+
+      if (tErr) throw tErr;
+
+      setSelectedRoundFilter(editedRound);
+
+      setPendingPastRoundEdit(null);
+      await fetchData();
+    } catch (err: any) {
+      console.error("Failed to edit past round match:", err);
+      alert("เกิดข้อผิดพลาดในการแก้ไขผลการแข่งขัน: " + (err.message || ""));
+    } finally {
+      setIsExecutingPastRoundEdit(false);
+    }
   };
 
   if (loading) {
@@ -703,7 +848,8 @@ export const AdminTournamentPage: React.FC = () => {
             ไม่พบข้อมูลการแข่งขัน
           </h2>
           <p className="text-gray-400 text-sm max-w-md mb-6">
-            รหัสการแข่งขันใน URL อาจไม่ถูกต้อง หรือการแข่งขันนี้อาจถูกลบออกจากระบบแล้ว
+            รหัสการแข่งขันใน URL อาจไม่ถูกต้อง
+            หรือการแข่งขันนี้อาจถูกลบออกจากระบบแล้ว
           </p>
           <Link
             to="/"
@@ -744,6 +890,10 @@ export const AdminTournamentPage: React.FC = () => {
   const displayedMatches = matches.filter(
     (m) => m.round_number === selectedRoundFilter,
   );
+
+  const isCurrentRoundActive =
+    tournament.status === "ongoing" &&
+    selectedRoundFilter === tournament.current_round;
 
   const p1 = selectedMatch
     ? players.find((p) => p.id === selectedMatch.player1_id)
@@ -990,14 +1140,17 @@ export const AdminTournamentPage: React.FC = () => {
                   <button
                     key={r}
                     onClick={() => setSelectedRoundFilter(r)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                       selectedRoundFilter === r
                         ? "bg-amber-500 text-gray-950 font-black shadow-md shadow-amber-500/20"
                         : "bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.04]"
                     }`}
                   >
-                    รอบที่ {r}{" "}
-                    {r === tournament.current_round && "(รอบปัจจุบัน)"}
+                    {r < tournament.current_round && (
+                      <History className="w-3 h-3 opacity-60" />
+                    )}
+                    <span>รอบที่ {r}</span>
+                    {r === tournament.current_round && " (รอบปัจจุบัน)"}
                   </button>
                 ))}
               </div>
@@ -1005,25 +1158,41 @@ export const AdminTournamentPage: React.FC = () => {
 
             {/* Pairings List with Admin Override */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <span>รายชื่อคู่แข่งขันรอบที่ {selectedRoundFilter}</span>
+                  {selectedRoundFilter < tournament.current_round && (
+                    <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-normal">
+                      <History className="w-3 h-3 text-amber-400" /> รอบที่ผ่านมา
+                    </span>
+                  )}
+                  {tournament.status === "completed" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-normal">
+                      <CheckCircle className="w-3 h-3 text-emerald-400" /> จบการแข่งขันแล้ว
+                    </span>
+                  )}
                 </h3>
-                <span className="text-[11px] text-amber-300/80 font-medium">
-                  *Admin สามารถคลิกโต๊ะใดก็ได้เพื่อแก้ไขผลการแข่งได้ทันที
-                </span>
+                {isCurrentRoundActive ? (
+                  <span className="text-[11px] text-amber-300/80 font-medium">
+                    *Admin สามารถคลิกโต๊ะใดก็ได้เพื่อแก้ไขผลการแข่งได้ทันที
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-amber-300/90 font-medium flex items-center gap-1">
+                    *คลิกปุ่ม &quot;แก้ไขผล&quot; เพื่อเปลี่ยนผลย้อนหลัง (เมื่อบันทึกจะย้อนกลับมารอบนี้เพื่อแก้คู่อื่นต่อได้)
+                  </span>
+                )}
               </div>
 
               <PairingsList
                 matches={displayedMatches}
                 players={players}
-                canReport={true}
+                canReport={tournament.status !== "registering"}
                 onSelectMatch={(m) => {
                   setSelectedMatch(m);
                   setIsReportOpen(true);
                 }}
                 onExportPdf={
-                  tournament.current_round > 0 && displayedMatches.length > 0
+                  isCurrentRoundActive && displayedMatches.length > 0
                     ? () =>
                         exportPairingsPdf({
                           tournament,
@@ -1145,6 +1314,7 @@ export const AdminTournamentPage: React.FC = () => {
                             <NationBadge
                               nation={p.nation}
                               deckBoss={p.deck_boss}
+                              format={tournament?.format}
                               size="sm"
                             />
                           </td>
@@ -1217,24 +1387,32 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 3: Standings */}
         {activeTab === "standings" && (
           <div>
-            {tournament.status === "ongoing" && !isCurrentRoundFullyCompleted && (
-              <div className="mb-4 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>
-                  ตารางคะแนนทางการอิงตามรอบที่ {Math.max(0, tournament.current_round - 1)} ที่เสร็จสิ้นแล้ว (คะแนนรอบที่ {tournament.current_round} กำลังแข่งขัน และจะอัปเดตอย่างเป็นทางการพร้อมกันทุกจอเมื่อแข่งครบทุกโต๊ะ)
-                </span>
-              </div>
-            )}
-            {tournament.status === "ongoing" && isCurrentRoundFullyCompleted && (
-              <div className="mb-4 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 shrink-0" />
-                <span>
-                  ตารางคะแนนล่าสุดรวมผลการแข่งรอบที่ {tournament.current_round} ครบถ้วนแล้ว (บันทึกผลครบทุกโต๊ะแล้ว)
-                </span>
-              </div>
-            )}
+            {tournament.status === "ongoing" &&
+              !isCurrentRoundFullyCompleted && (
+                <div className="mb-4 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>
+                    ตารางคะแนนทางการอิงตามรอบที่{" "}
+                    {Math.max(0, tournament.current_round - 1)} ที่เสร็จสิ้นแล้ว
+                    (คะแนนรอบที่ {tournament.current_round} กำลังแข่งขัน
+                    และจะอัปเดตอย่างเป็นทางการพร้อมกันทุกจอเมื่อแข่งครบทุกโต๊ะ)
+                  </span>
+                </div>
+              )}
+            {tournament.status === "ongoing" &&
+              isCurrentRoundFullyCompleted && (
+                <div className="mb-4 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>
+                    ตารางคะแนนล่าสุดรวมผลการแข่งรอบที่{" "}
+                    {tournament.current_round} ครบถ้วนแล้ว
+                    (บันทึกผลครบทุกโต๊ะแล้ว)
+                  </span>
+                </div>
+              )}
             <StandingsTable
               standings={standings}
+              format={tournament?.format}
               onExportPdf={
                 tournament.status === "completed"
                   ? () =>
@@ -1251,7 +1429,7 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 4: Meta Analytics */}
         {activeTab === "meta" && (
           <div>
-            <MetaAnalytics players={players} />
+            <MetaAnalytics players={players} format={tournament?.format} />
           </div>
         )}
       </main>
@@ -1283,7 +1461,8 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ (Nation) <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
+                  ประเทศ (Nation){" "}
+                  <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                 </label>
                 <select
                   value={formNation}
@@ -1319,7 +1498,10 @@ export const AdminTournamentPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-300">
-                    ชื่อแวนการ์ดหลัก <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
+                    ชื่อแวนการ์ดหลัก{" "}
+                    <span className="text-gray-500 font-normal">
+                      (ไม่บังคับ)
+                    </span>
                   </label>
                   {formNation && currentNationBosses.length > 0 && (
                     <span className="text-[11px] text-amber-300/80">
@@ -1327,27 +1509,17 @@ export const AdminTournamentPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <select
+                <DeckBossAutocomplete
                   value={formDeckBoss}
-                  onChange={(e) => setFormDeckBoss(e.target.value)}
-                  disabled={!formNation || currentNationBosses.length === 0}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {!formNation ? (
-                    <option value="">-- กรุณาเลือกประเทศก่อน --</option>
-                  ) : currentNationBosses.length === 0 ? (
-                    <option value="">-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --</option>
-                  ) : (
-                    <>
-                      <option value="">-- เลือกแวนการ์ดหลัก --</option>
-                      {currentNationBosses.map((b) => (
-                        <option key={b.id} value={b.name_en}>
-                          {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
+                  onChange={setFormDeckBoss}
+                  bosses={currentNationBosses}
+                  disabled={!formNation}
+                  disabledPlaceholder={
+                    !formNation
+                      ? "-- กรุณาเลือกประเทศก่อน --"
+                      : "-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --"
+                  }
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -1394,7 +1566,8 @@ export const AdminTournamentPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1">
-                  ประเทศ (Nation) <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
+                  ประเทศ (Nation){" "}
+                  <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
                 </label>
                 <select
                   value={formNation}
@@ -1430,7 +1603,10 @@ export const AdminTournamentPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-gray-300">
-                    ชื่อแวนการ์ดหลัก <span className="text-gray-500 font-normal">(ไม่บังคับ)</span>
+                    ชื่อแวนการ์ดหลัก{" "}
+                    <span className="text-gray-500 font-normal">
+                      (ไม่บังคับ)
+                    </span>
                   </label>
                   {formNation && currentNationBosses.length > 0 && (
                     <span className="text-[11px] text-amber-300/80">
@@ -1438,33 +1614,17 @@ export const AdminTournamentPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <select
+                <DeckBossAutocomplete
                   value={formDeckBoss}
-                  onChange={(e) => setFormDeckBoss(e.target.value)}
-                  disabled={!formNation || currentNationBosses.length === 0}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {!formNation ? (
-                    <option value="">-- กรุณาเลือกประเทศก่อน --</option>
-                  ) : currentNationBosses.length === 0 ? (
-                    <option value="">-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --</option>
-                  ) : (
-                    <>
-                      <option value="">-- เลือกแวนการ์ดหลัก --</option>
-                      {currentNationBosses.map((b) => (
-                        <option key={b.id} value={b.name_en}>
-                          {b.name_en} {b.name_th ? `(${b.name_th})` : ""}
-                        </option>
-                      ))}
-                      {formDeckBoss &&
-                        !currentNationBosses.some(
-                          (b) => b.name_en === formDeckBoss,
-                        ) && (
-                          <option value={formDeckBoss}>{formDeckBoss}</option>
-                        )}
-                    </>
-                  )}
-                </select>
+                  onChange={setFormDeckBoss}
+                  bosses={currentNationBosses}
+                  disabled={!formNation}
+                  disabledPlaceholder={
+                    !formNation
+                      ? "-- กรุณาเลือกประเทศก่อน --"
+                      : "-- ไม่พบแวนการ์ดหลักในเนชั่นนี้ --"
+                  }
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.08]">
@@ -1494,6 +1654,7 @@ export const AdminTournamentPage: React.FC = () => {
         onClose={() => setIsLuckyDrawOpen(false)}
         players={players}
         tournamentId={tournament.id}
+        format={tournament?.format}
       />
 
       {/* Override Match Result Modal */}
@@ -1505,7 +1666,49 @@ export const AdminTournamentPage: React.FC = () => {
         player2={p2}
         onSaveResult={handleSaveMatchResult}
         isAdmin={true}
+        format={tournament?.format}
+        isPastRound={
+          Boolean(
+            selectedMatch &&
+              (selectedMatch.round_number < tournament.current_round ||
+                tournament.status === "completed"),
+          )
+        }
+        currentRound={tournament.current_round}
       />
+
+      {/* Modal ยืนยันแก้ไขผลการแข่งย้อนหลังและจับคู่ใหม่ */}
+      <ConfirmModal
+        isOpen={Boolean(pendingPastRoundEdit)}
+        onClose={() =>
+          !isExecutingPastRoundEdit && setPendingPastRoundEdit(null)
+        }
+        onConfirm={handleConfirmPastRoundEditAndRepair}
+        isLoading={isExecutingPastRoundEdit}
+        variant="warning"
+        title={`ยืนยันแก้ไขผลการแข่งขันรอบที่ ${pendingPastRoundEdit?.match.round_number}`}
+        confirmText="ยืนยันแก้ไขผล"
+        cancelText="ยกเลิก (คงผลเดิม)"
+        warningText={`เมื่อยืนยัน ระบบจะบันทึกผลการแข่งขันใหม่ ลบผลการจับคู่ตั้งแต่รอบที่ ${(pendingPastRoundEdit?.match.round_number ?? 0) + 1} ออกทั้งหมด และย้อนกลับมาที่รอบที่ ${pendingPastRoundEdit?.match.round_number} เพื่อให้คุณสามารถตรวจสอบหรือแก้ไขผลคู่อื่นๆ ได้จนครบ แล้วค่อยกดปุ่มเริ่มรอบถัดไปด้านบน`}
+        description="คุณแน่ใจหรือไม่ว่าต้องการแก้ไขผลการแข่งขันย้อนหลังนี้?"
+      >
+        {pendingPastRoundEdit && (
+          <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] text-xs space-y-2">
+            <div className="text-gray-400">
+              โต๊ะที่ {pendingPastRoundEdit.match.table_number} · รอบที่{" "}
+              {pendingPastRoundEdit.match.round_number}
+            </div>
+            <div className="text-white font-bold">
+              ผลการแข่งขันใหม่:{" "}
+              <span className="text-emerald-400">
+                {pendingPastRoundEdit.isDoubleLoss
+                  ? "แพ้คู่ (Double Loss)"
+                  : `${pendingPastRoundEdit.winnerName || "ผู้ชนะ"} ชนะ`}
+              </span>
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
       {/* Modal ยืนยันจบการแข่งขัน */}
       {isEndModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
@@ -1531,10 +1734,13 @@ export const AdminTournamentPage: React.FC = () => {
                 <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-rose-300 text-xs">
-                    ยังมีโต๊ะที่ยังไม่ได้บันทึกผลการแข่งในรอบที่ {tournament.current_round}
+                    ยังมีโต๊ะที่ยังไม่ได้บันทึกผลการแข่งในรอบที่{" "}
+                    {tournament.current_round}
                   </div>
                   <div className="text-gray-300 mt-1 leading-relaxed">
-                    หากยืนยันจบการแข่งขันตอนนี้ โต๊ะที่ค้างอยู่จะไม่ได้รับคะแนนในรอบนี้ กรุณาตรวจสอบให้แน่ใจก่อนกดยืนยัน
+                    หากยืนยันจบการแข่งขันตอนนี้
+                    โต๊ะที่ค้างอยู่จะไม่ได้รับคะแนนในรอบนี้
+                    กรุณาตรวจสอบให้แน่ใจก่อนกดยืนยัน
                   </div>
                 </div>
               </div>
@@ -1588,6 +1794,7 @@ export const AdminTournamentPage: React.FC = () => {
             <NationBadge
               nation={playerToDelete.nation}
               deckBoss={playerToDelete.deck_boss}
+              format={tournament?.format}
               size="sm"
             />
           </div>
@@ -1607,7 +1814,9 @@ export const AdminTournamentPage: React.FC = () => {
             : "ยืนยันการดรอปผู้เล่น (ออกจากการแข่ง)"
         }
         confirmText={
-          playerToToggleDrop?.is_dropped ? "นำกลับเข้าแข่ง" : "ยืนยันดรอปผู้เล่น"
+          playerToToggleDrop?.is_dropped
+            ? "นำกลับเข้าแข่ง"
+            : "ยืนยันดรอปผู้เล่น"
         }
         cancelText="ยกเลิก"
         icon={
@@ -1626,7 +1835,11 @@ export const AdminTournamentPage: React.FC = () => {
         }
         description={
           <span>
-            คุณแน่ใจหรือไม่ว่าต้องการ{playerToToggleDrop?.is_dropped ? "นำผู้เล่นกลับเข้าสู่การแข่งขัน" : "ตั้งค่าให้ผู้เล่นออกจากการแข่งขัน"}?
+            คุณแน่ใจหรือไม่ว่าต้องการ
+            {playerToToggleDrop?.is_dropped
+              ? "นำผู้เล่นกลับเข้าสู่การแข่งขัน"
+              : "ตั้งค่าให้ผู้เล่นออกจากการแข่งขัน"}
+            ?
           </span>
         }
       >
@@ -1643,6 +1856,7 @@ export const AdminTournamentPage: React.FC = () => {
             <NationBadge
               nation={playerToToggleDrop.nation}
               deckBoss={playerToToggleDrop.deck_boss}
+              format={tournament?.format}
               size="sm"
             />
           </div>

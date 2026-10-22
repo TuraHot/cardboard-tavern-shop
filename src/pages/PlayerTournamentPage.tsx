@@ -338,13 +338,14 @@ export const PlayerTournamentPage: React.FC = () => {
             <StandingsTable
               standings={standings}
               showNationAndBoss={tournament.status === "completed"}
+              format={tournament.format}
             />
           </div>
         )}
 
         {activeTab === "meta" && (
           <div>
-            <MetaAnalytics players={players} />
+            <MetaAnalytics players={players} format={tournament.format} />
           </div>
         )}
       </main>

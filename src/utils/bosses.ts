@@ -106,17 +106,40 @@ export const INITIAL_BOSS_TRANSLATIONS: Record<string, string> = {
 };
 
 const bossMap = new Map<string, string>();
+const reverseBossMap = new Map<string, string>();
+const enDisplayNameMap = new Map<string, string>();
+
+function toTitleCase(str: string): string {
+  return str
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
 // Initialize with pre-seeded translations
 for (const [en, th] of Object.entries(INITIAL_BOSS_TRANSLATIONS)) {
-  bossMap.set(en.toLowerCase().trim(), th);
+  const enLower = en.toLowerCase().trim();
+  const thTrimmed = th.trim();
+  const enTitle = toTitleCase(en);
+
+  bossMap.set(enLower, thTrimmed);
+  reverseBossMap.set(thTrimmed.toLowerCase(), enTitle);
+  enDisplayNameMap.set(enLower, enTitle);
 }
 
 export function syncBossesFromDb(rows: Array<Pick<BossRow, 'name_en' | 'name_th'>>) {
   if (!rows || !Array.isArray(rows)) return;
   for (const r of rows) {
-    if (r.name_en && r.name_th) {
-      bossMap.set(r.name_en.toLowerCase().trim(), r.name_th.trim());
+    if (r.name_en) {
+      const enOriginal = r.name_en.trim();
+      const enLower = enOriginal.toLowerCase();
+      enDisplayNameMap.set(enLower, enOriginal);
+
+      if (r.name_th) {
+        const thTrimmed = r.name_th.trim();
+        bossMap.set(enLower, thTrimmed);
+        reverseBossMap.set(thTrimmed.toLowerCase(), enOriginal);
+      }
     }
   }
 }
@@ -163,3 +186,51 @@ export function getBossThaiName(deckBoss?: string | null): string {
 
   return trimmed;
 }
+
+export function getBossEnName(deckBoss?: string | null): string {
+  if (!deckBoss) return '';
+  const trimmed = deckBoss.trim();
+  const lower = trimmed.toLowerCase();
+
+  // 1. Direct match in enDisplayNameMap
+  const directEn = enDisplayNameMap.get(lower);
+  if (directEn) return directEn;
+
+  // 2. Direct match in reverseBossMap (from Thai)
+  const fromThai = reverseBossMap.get(lower);
+  if (fromThai) return fromThai;
+
+  // 3. If contains Thai characters, search partial match
+  if (/[\u0E00-\u0E7F]/.test(trimmed)) {
+    for (const [th, en] of reverseBossMap.entries()) {
+      if (th.length >= 2 && trimmed.includes(th)) {
+        return en;
+      }
+    }
+  }
+
+  // 4. Substring match in enDisplayNameMap
+  for (const [enKey, enDisp] of enDisplayNameMap.entries()) {
+    if (enKey.length >= 4 && lower.includes(enKey)) {
+      return enDisp;
+    }
+  }
+
+  return trimmed;
+}
+
+export function isJpFormat(format?: string | null): boolean {
+  if (!format) return false;
+  return format.toLowerCase().includes('jp');
+}
+
+export function isThFormat(format?: string | null): boolean {
+  if (!format) return false;
+  return format.toLowerCase().includes('th');
+}
+
+export function getBossDisplayName(deckBoss?: string | null, format?: string | null): string {
+  if (!deckBoss) return '';
+  return isJpFormat(format) ? getBossEnName(deckBoss) : getBossThaiName(deckBoss);
+}
+

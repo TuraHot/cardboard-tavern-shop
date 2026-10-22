@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Player } from '../types';
 import { VANGUARD_NATIONS, getNationConfig, hexToRgba, NationConfig, ensureNationsLoaded } from '../utils/nations';
-import { getBossThaiName, ensureBossesLoaded } from '../utils/bosses';
+import { getBossThaiName, getBossEnName, isJpFormat, ensureBossesLoaded } from '../utils/bosses';
 import { BarChart3, Shield, Layers } from 'lucide-react';
 
 interface MetaAnalyticsProps {
   players: Player[];
+  format?: string | null;
 }
 
 const NationIcon: React.FC<{ config: NationConfig; className?: string }> = ({
@@ -45,7 +46,7 @@ const NationIcon: React.FC<{ config: NationConfig; className?: string }> = ({
   return <span className="text-xs leading-none shrink-0">{config.iconSymbol}</span>;
 };
 
-export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
+export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format }) => {
   const [, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
     });
   }, []);
 
+  const isJP = isJpFormat(format);
   const activePlayers = players.filter((p) => !p.is_dropped);
   const total = activePlayers.length;
 
@@ -72,10 +74,11 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
     .filter(([_, count]) => count > 0)
     .sort((a, b) => b[1] - a[1]);
 
-  // Calculate top deck bosses (grouped by Thai name)
+  // Calculate top deck bosses
   interface BossStat {
-    thaiName: string;
-    rawName: string;
+    key: string;
+    displayName: string;
+    subName: string;
     nation: string;
     count: number;
   }
@@ -85,17 +88,23 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
   for (const p of activePlayers) {
     if (p.deck_boss && p.deck_boss.trim()) {
       const raw = p.deck_boss.trim();
+      const en = getBossEnName(raw) || raw;
       const thai = getBossThaiName(raw) || raw;
 
-      if (!bossStatsMap[thai]) {
-        bossStatsMap[thai] = {
-          thaiName: thai,
-          rawName: raw,
+      const key = isJP ? en.toLowerCase() : thai.toLowerCase();
+      const displayName = isJP ? en : thai;
+      const subName = isJP ? thai : en;
+
+      if (!bossStatsMap[key]) {
+        bossStatsMap[key] = {
+          key,
+          displayName,
+          subName,
           nation: p.nation || '',
           count: 0,
         };
       }
-      bossStatsMap[thai].count += 1;
+      bossStatsMap[key].count += 1;
     }
   }
 
@@ -136,6 +145,9 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
               const config = getNationConfig(nationName);
               const percent = Math.round((count / total) * 100);
 
+              const primaryNationName = isJP ? config.name : (config.thaiName || config.name);
+              const secondaryNationName = isJP ? config.thaiName : config.name;
+
               return (
                 <div key={nationName} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs sm:text-sm">
@@ -150,8 +162,10 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
                       >
                         <NationIcon config={config} className="w-4.5 h-4.5" />
                       </div>
-                      <span className="text-white font-semibold">{config.name}</span>
-                      <span className="text-gray-400 text-xs font-light">({config.thaiName})</span>
+                      <span className="text-white font-semibold">{primaryNationName}</span>
+                      {secondaryNationName && secondaryNationName !== primaryNationName && (
+                        <span className="text-gray-400 text-xs font-light">({secondaryNationName})</span>
+                      )}
                     </span>
                     <span className="text-gray-400 font-mono">
                       {count} คน ({percent}%)
@@ -188,7 +202,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
 
                 return (
                   <div
-                    key={boss.thaiName}
+                    key={boss.key}
                     className="flex items-center justify-between p-2.5 rounded-xl bg-gray-850/80 border border-gray-800 hover:border-gray-700 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -202,7 +216,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
                             backgroundColor: hexToRgba(nationConfig.colorCode, 0.15),
                             borderColor: hexToRgba(nationConfig.colorCode, 0.35),
                           }}
-                          title={`${nationConfig.name} (${nationConfig.thaiName})`}
+                          title={isJP ? `${nationConfig.name} (${nationConfig.thaiName})` : `${nationConfig.thaiName} (${nationConfig.name})`}
                         >
                           <NationIcon config={nationConfig} className="w-3.5 h-3.5" />
                         </div>
@@ -210,10 +224,15 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players }) => {
                       <div className="flex items-center gap-1.5 truncate">
                         <span
                           className="font-semibold text-sm text-white truncate"
-                          title={boss.rawName !== boss.thaiName ? `${boss.rawName} (${boss.thaiName})` : boss.thaiName}
+                          title={boss.subName && boss.subName !== boss.displayName ? `${boss.displayName} (${boss.subName})` : boss.displayName}
                         >
-                          {boss.thaiName}
+                          {boss.displayName}
                         </span>
+                        {boss.subName && boss.subName !== boss.displayName && (
+                          <span className="text-xs text-gray-400 font-light truncate">
+                            ({boss.subName})
+                          </span>
+                        )}
                       </div>
                     </div>
 

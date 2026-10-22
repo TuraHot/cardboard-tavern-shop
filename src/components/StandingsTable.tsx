@@ -10,6 +10,7 @@ interface StandingsTableProps {
   onSearchChange?: (q: string) => void;
   showNationAndBoss?: boolean;
   onExportPdf?: () => void;
+  format?: string | null;
 }
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
@@ -18,6 +19,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   onSearchChange,
   showNationAndBoss = true,
   onExportPdf,
+  format,
 }) => {
   const [internalSearch, setInternalSearch] = useState("");
   const query = searchQuery || internalSearch;
@@ -176,6 +178,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                             <NationBadge
                               nation={s.player.nation}
                               deckBoss={s.player.deck_boss}
+                              format={format}
                               size="sm"
                             />
                           ) : (

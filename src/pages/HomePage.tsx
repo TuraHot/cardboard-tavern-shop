@@ -791,6 +791,9 @@ export const HomePage: React.FC = () => {
                         } else if (newFormat === "Premium TH") {
                           setBannerUrl("/images/vanguard_banner_2.jpg");
                           setName("แข่งแวนการ์ด Premium วันอาทิตย์");
+                        } else if (newFormat === "Standard JP") {
+                          setBannerUrl("/images/vanguard_banner_1.jpg");
+                          setName("แข่งแวนการ์ด D JP วันพฤหัสบดี");
                         }
                       }}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"

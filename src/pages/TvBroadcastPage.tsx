@@ -325,6 +325,7 @@ export const TvBroadcastPage: React.FC = () => {
               <StandingsTable
                 standings={standings}
                 showNationAndBoss={tournament.status === 'completed'}
+                format={tournament.format}
               />
             </div>
           )}
