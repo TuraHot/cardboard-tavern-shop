@@ -56,8 +56,9 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
   }, []);
 
   const isJP = isJpFormat(format);
-  const activePlayers = players.filter((p) => !p.is_dropped);
-  const total = activePlayers.length;
+  const total = players.length;
+  const droppedCount = players.filter((p) => p.is_dropped).length;
+  const activeCount = total - droppedCount;
 
   // Calculate nation breakdown
   const nationCounts: Record<string, number> = {};
@@ -65,7 +66,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
     nationCounts[n.name] = 0;
   }
 
-  for (const p of activePlayers) {
+  for (const p of players) {
     const nation = p.nation || 'Other';
     nationCounts[nation] = (nationCounts[nation] || 0) + 1;
   }
@@ -85,7 +86,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
 
   const bossStatsMap: Record<string, BossStat> = {};
 
-  for (const p of activePlayers) {
+  for (const p of players) {
     if (p.deck_boss && p.deck_boss.trim()) {
       const raw = p.deck_boss.trim();
       const en = getBossEnName(raw) || raw;
@@ -109,8 +110,7 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
   }
 
   const sortedBosses = Object.values(bossStatsMap)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6);
+    .sort((a, b) => b.count - a.count);
 
   if (total === 0) {
     return (
@@ -129,6 +129,9 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
         </div>
         <span className="text-xs text-gray-400 font-mono">
           ผู้เล่นทั้งหมด: {total} คน
+          {droppedCount > 0 && (
+            <span className="text-gray-500 font-normal"> (แข่ง {activeCount} · ดรอป {droppedCount})</span>
+          )}
         </span>
       </div>
 
@@ -189,13 +192,15 @@ export const MetaAnalytics: React.FC<MetaAnalyticsProps> = ({ players, format })
 
         {/* Top Deck Bosses */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-gray-400" />
-            <span>แวนการ์ดหลักยอดนิยม</span>
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-gray-400" />
+              <span>แวนการ์ดหลัก</span>
+            </h4>
+          </div>
 
           {sortedBosses.length > 0 ? (
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 max-h-[395px] overflow-y-auto pr-1.5">
               {sortedBosses.map((boss, idx) => {
                 const percent = Math.round((boss.count / total) * 100);
                 const nationConfig = boss.nation ? getNationConfig(boss.nation) : null;

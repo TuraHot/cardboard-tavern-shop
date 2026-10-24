@@ -49,6 +49,7 @@ import {
   Edit2,
   Shield,
   History,
+  RotateCcw,
 } from "lucide-react";
 
 interface PendingPastRoundEdit {
@@ -87,6 +88,8 @@ export const AdminTournamentPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
   const [isEditTournamentOpen, setIsEditTournamentOpen] = useState(false);
+  const [isResetRound1ModalOpen, setIsResetRound1ModalOpen] = useState(false);
+  const [isResettingRound1, setIsResettingRound1] = useState(false);
 
   // Past round edit confirmation modal states
   const [pendingPastRoundEdit, setPendingPastRoundEdit] =
@@ -823,6 +826,55 @@ export const AdminTournamentPage: React.FC = () => {
     }
   };
 
+  const handleConfirmResetRound1 = async () => {
+    if (!tournament) return;
+    try {
+      setIsResettingRound1(true);
+
+      // 1. ลบคู่แข่งขันทั้งหมดในทัวร์นาเมนต์นี้ (pairing รอบ 1)
+      const { error: matchErr } = await supabase
+        .from("matches")
+        .delete()
+        .eq("tournament_id", tournament.id);
+
+      if (matchErr) throw matchErr;
+
+      // 2. รีเซ็ตสถานะ BYE ของผู้เล่นทุกคนในทัวร์นาเมนต์นี้
+      const { error: playerErr } = await supabase
+        .from("players")
+        .update({ has_received_bye: false })
+        .eq("tournament_id", tournament.id);
+
+      if (playerErr) throw playerErr;
+
+      // 3. ย้อนสถานะทัวร์นาเมนต์กลับเป็น 'registering', current_round = 0 และเคลียร์เวลา
+      const { error: tourneyErr } = await supabase
+        .from("tournaments")
+        .update({
+          status: "registering",
+          current_round: 0,
+          timer_ends_at: null,
+          timer_paused_remaining_seconds: null,
+        })
+        .eq("id", tournament.id);
+
+      if (tourneyErr) throw tourneyErr;
+
+      setSelectedRoundFilter(1);
+      setSelectedMatch(null);
+      setIsReportOpen(false);
+      setPendingPastRoundEdit(null);
+      setIsResetRound1ModalOpen(false);
+
+      await fetchData();
+    } catch (err: any) {
+      console.error("Failed to reset round 1 to registration:", err);
+      alert("เกิดข้อผิดพลาดในการย้อนกลับไปสถานะรับสมัคร: " + (err.message || ""));
+    } finally {
+      setIsResettingRound1(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#06080d] flex items-center justify-center text-amber-400">
@@ -1116,6 +1168,18 @@ export const AdminTournamentPage: React.FC = () => {
                     จบการแข่งขัน
                   </button>
                 )}
+
+                {tournament.current_round === 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsResetRound1ModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                    title="ยกเลิกการจับคู่รอบที่ 1 และย้อนกลับไปเปิดรับสมัครผู้เล่นใหม่"
+                  >
+                    <RotateCcw className="w-4 h-4 text-rose-400" />
+                    <span>ย้อนกลับไปรับสมัคร (ยกเลิก Pairing)</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1160,7 +1224,11 @@ export const AdminTournamentPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>รายชื่อคู่แข่งขันรอบที่ {selectedRoundFilter}</span>
+                  {tournament.status === "registering" ? (
+                    <span>รายชื่อคู่แข่งขัน (ยังไม่เริ่มการแข่งขัน)</span>
+                  ) : (
+                    <span>รายชื่อคู่แข่งขันรอบที่ {selectedRoundFilter}</span>
+                  )}
                   {selectedRoundFilter < tournament.current_round && (
                     <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-normal">
                       <History className="w-3 h-3 text-amber-400" /> รอบที่ผ่านมา
@@ -1172,7 +1240,11 @@ export const AdminTournamentPage: React.FC = () => {
                     </span>
                   )}
                 </h3>
-                {isCurrentRoundActive ? (
+                {tournament.status === "registering" ? (
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    *กรุณากดปุ่ม &quot;เริ่มรอบที่ 1&quot; ด้านบนเพื่อทำการจับคู่แข่งขัน
+                  </span>
+                ) : isCurrentRoundActive ? (
                   <span className="text-[11px] text-amber-300/80 font-medium">
                     *Admin สามารถคลิกโต๊ะใดก็ได้เพื่อแก้ไขผลการแข่งได้ทันที
                   </span>
@@ -1210,6 +1282,30 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 2: Player Management */}
         {activeTab === "players" && (
           <div className="space-y-6">
+            {tournament.current_round === 1 && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+                <div className="flex items-center gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">
+                      การแข่งขันเริ่มรอบที่ 1 แล้ว (สถานะ: {tournament.status === "ongoing" ? "กำลังแข่งขัน" : "จบการแข่งขัน"})
+                    </div>
+                    <div className="text-gray-300 text-xs mt-0.5">
+                      หากต้องการเพิ่ม ลบ หรือแก้ไขข้อมูลผู้เล่น สามารถกดยกเลิกการจับคู่เพื่อย้อนกลับไปสถานะรับสมัครได้
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsResetRound1ModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 self-start sm:self-auto shadow-[0_0_15px_rgba(225,29,72,0.3)] active:scale-95"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>ย้อนกลับไปรับสมัคร (ยกเลิก Pairing)</span>
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-bold text-white">
@@ -1269,6 +1365,18 @@ export const AdminTournamentPage: React.FC = () => {
                         ? `ผู้เล่นเต็ม (${players.length}/${tournament.max_players || 20})`
                         : `เพิ่มผู้เล่น (${players.length}/${tournament.max_players || 20})`}
                     </span>
+                  </button>
+                )}
+
+                {tournament.current_round === 1 && tournament.status !== "registering" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsResetRound1ModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                    title="ยกเลิกการจับคู่รอบที่ 1 เพื่อกลับมารับสมัครและจัดการผู้เล่น"
+                  >
+                    <RotateCcw className="w-4 h-4 text-rose-400" />
+                    <span>ย้อนกลับไปรับสมัคร</span>
                   </button>
                 )}
               </div>
@@ -1861,6 +1969,54 @@ export const AdminTournamentPage: React.FC = () => {
             />
           </div>
         )}
+      </ConfirmModal>
+
+      {/* Modal: ยืนยันย้อนกลับไปสถานะรับสมัคร (ยกเลิก Pairing รอบ 1) */}
+      <ConfirmModal
+        isOpen={isResetRound1ModalOpen}
+        onClose={() => !isResettingRound1 && setIsResetRound1ModalOpen(false)}
+        onConfirm={handleConfirmResetRound1}
+        isLoading={isResettingRound1}
+        variant="danger"
+        title="ยกเลิกการจับคู่รอบที่ 1 และย้อนกลับไปรับสมัคร?"
+        confirmText="ยืนยันย้อนกลับและลบ Pairing"
+        cancelText="ยกเลิก"
+        icon={<RotateCcw className="w-5 h-5 text-rose-400" />}
+        warningText="การจับคู่รอบที่ 1 รวมถึงผลการแข่งขันทั้งหมดในรอบนี้จะถูกลบออกถาวร และสถานะการแข่งขันจะกลับไปเป็น 'เปิดรับสมัคร' เพื่อให้สามารถเพิ่ม ลบ หรือแก้ไขรายชื่อผู้เข้าแข่งขันได้ใหม่"
+        description="คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจับคู่รอบที่ 1 เพื่อกลับไปสู่ขั้นตอนการรับสมัครผู้เข้าแข่งขัน?"
+      >
+        <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] text-xs text-gray-300 space-y-2.5 shadow-inner">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">คู่แข่งขันรอบที่ 1 ที่จะถูกลบ:</span>
+            <span className="font-bold text-white font-mono text-sm">
+              {matches.filter((m) => m.round_number === 1).length} คู่
+            </span>
+          </div>
+          {matches.some(
+            (m) =>
+              m.round_number === 1 &&
+              m.status === "completed" &&
+              !m.is_bye &&
+              !m.is_Bye,
+          ) && (
+            <div className="text-rose-300 bg-rose-950/40 p-2.5 rounded-lg border border-rose-500/30 flex items-center gap-2 font-medium">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>
+                มีการบันทึกผลไปแล้ว{" "}
+                {
+                  matches.filter(
+                    (m) =>
+                      m.round_number === 1 &&
+                      m.status === "completed" &&
+                      !m.is_bye &&
+                      !m.is_Bye,
+                  ).length
+                }{" "}
+                โต๊ะ ข้อมูลผลการแข่งขันจะถูกลบออกทั้งหมด
+              </span>
+            </div>
+          )}
+        </div>
       </ConfirmModal>
 
       {/* Modal ยืนยันลบการแข่งขัน */}

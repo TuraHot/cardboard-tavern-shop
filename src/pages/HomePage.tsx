@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { Tournament, TournamentFormat } from "../types";
 import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
-import { EditTournamentModal } from "../components/EditTournamentModal";
+import { DuplicateTournamentModal } from "../components/DuplicateTournamentModal";
 import {
   Plus,
   Swords,
@@ -19,7 +19,7 @@ import {
   X,
   Search,
   CheckCircle2,
-  Edit2,
+  Copy,
 } from "lucide-react";
 import { compressImage } from "../utils/compressImage";
 import { useAuth } from "../contexts/AuthContext";
@@ -43,9 +43,8 @@ export const HomePage: React.FC = () => {
   const [tournamentToDelete, setTournamentToDelete] =
     useState<Tournament | null>(null);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
-  const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(
-    null,
-  );
+  const [tournamentToDuplicate, setTournamentToDuplicate] =
+    useState<Tournament | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "completed"
@@ -705,13 +704,13 @@ export const HomePage: React.FC = () => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setTournamentToEdit(tourney);
+                              setTournamentToDuplicate(tourney);
                             }}
-                            className="p-1.5 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
-                            title="แก้ไขข้อมูลการแข่งขัน"
+                            className="p-1.5 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
+                            title="คัดลอกการแข่งขันนี้ (Duplicate)"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">แก้ไข</span>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">คัดลอก</span>
                           </button>
 
                           <button
@@ -1251,17 +1250,15 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Modal แก้ไขการแข่งขัน (สำหรับ Admin) */}
+      {/* Modal คัดลอกการแข่งขัน (สำหรับ Admin) */}
       {isAdmin && (
-        <EditTournamentModal
-          isOpen={Boolean(tournamentToEdit)}
-          onClose={() => setTournamentToEdit(null)}
-          tournament={tournamentToEdit}
-          currentPlayersCount={tournamentToEdit ? (playerCounts[tournamentToEdit.id] || 0) : 0}
-          onSaved={(updated) => {
-            setTournaments((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t)),
-            );
+        <DuplicateTournamentModal
+          isOpen={Boolean(tournamentToDuplicate)}
+          onClose={() => setTournamentToDuplicate(null)}
+          tournament={tournamentToDuplicate}
+          onSuccess={(newTournament) => {
+            fetchTournaments();
+            navigate(`/admin/tournament/${newTournament.id}`);
           }}
         />
       )}

@@ -1,7 +1,7 @@
 import { Tournament, Player, Match, PlayerStanding } from '../types';
 import { formatRate } from './tiebreaker';
 import { getNationConfig } from './nations';
-import { getBossThaiName } from './bosses';
+import { getBossThaiName, getBossEnName, isJpFormat } from './bosses';
 
 interface ExportPairingsOptions {
   tournament: Tournament;
@@ -456,6 +456,7 @@ export function exportStandingsPdf({
   tournament,
   standings,
 }: ExportStandingsOptions) {
+  const isJP = isJpFormat(tournament.format);
   const nowStr = new Date().toLocaleDateString('th-TH', {
     year: 'numeric',
     month: 'short',
@@ -474,13 +475,20 @@ export function exportStandingsPdf({
       const medalStr = rank === 1 ? '🥇 ' : rank === 2 ? '🥈 ' : rank === 3 ? '🥉 ' : '';
 
       const nationCfg = getNationConfig(p.nation);
-      const bossThai = p.deck_boss ? getBossThaiName(p.deck_boss) : '';
-      const deckStr = [
-        nationCfg?.name ? `${nationCfg.name} (${nationCfg.thaiName})` : '',
-        bossThai ? bossThai : p.deck_boss || '',
-      ]
-        .filter(Boolean)
-        .join(' • ') || '-';
+      const nationName = p.nation
+        ? isJP
+          ? nationCfg?.name || p.nation
+          : nationCfg?.thaiName || nationCfg?.name || p.nation
+        : '';
+      const bossName = p.deck_boss
+        ? isJP
+          ? getBossEnName(p.deck_boss) || p.deck_boss
+          : getBossThaiName(p.deck_boss) || p.deck_boss
+        : '';
+      const deckStr = [nationName, bossName].filter(Boolean).join(' • ') || '-';
+
+      // ชนะบาย (BYE) ถือเป็นชนะ 1 รอบสำหรับตารางคะแนนใน PDF
+      const totalWins = s.wins + (s.byes || 0);
 
       return `
         <tr class="${rankClass}">
@@ -493,7 +501,7 @@ export function exportStandingsPdf({
           </td>
           <td style="color:#475569; font-size:11px;">${deckStr}</td>
           <td class="text-center font-bold" style="font-size:13px; font-family:'Inter', monospace; color:#0f172a;">${s.points}</td>
-          <td class="text-center" style="font-family:'Inter', monospace;">${s.wins}-${s.losses}</td>
+          <td class="text-center" style="font-family:'Inter', monospace;">${totalWins}-${s.losses}</td>
           <td class="text-center" style="font-family:'Inter', monospace; color:#475569;">${formatRate(s.omw)}</td>
           <td class="text-center" style="font-family:'Inter', monospace; color:#64748b;">${formatRate(s.oomw)}</td>
         </tr>
