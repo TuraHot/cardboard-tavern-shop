@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Plus, Trash2, Shield } from "lucide-react";
+import { X, Plus, Trash2, Shield, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { NationRow, BossRow } from "../types";
 import { ConfirmModal } from "./ConfirmModal";
@@ -35,7 +35,7 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
 
   const handleAddBoss = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentNationId || !nameEn.trim()) return;
+    if (!currentNationId || !nameEn.trim() || loading) return;
     setLoading(true);
 
     const { error } = await supabase.from("bosses").insert([
@@ -57,7 +57,7 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
   };
 
   const handleConfirmDeleteBoss = async () => {
-    if (!bossToDelete) return;
+    if (!bossToDelete || isDeletingBoss) return;
     try {
       setIsDeletingBoss(true);
       const { error } = await supabase
@@ -135,10 +135,19 @@ export const BossManagerModal: React.FC<BossManagerModalProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs transition-all"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>เพิ่มแวนการ์ดหลักเข้าเนชั่นนี้</span>
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>กำลังเพิ่มแวนการ์ดหลัก...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มแวนการ์ดหลักเข้าเนชั่นนี้</span>
+              </>
+            )}
           </button>
         </form>
 

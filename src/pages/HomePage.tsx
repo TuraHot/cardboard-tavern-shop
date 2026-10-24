@@ -134,7 +134,7 @@ export const HomePage: React.FC = () => {
   };
 
   const handleDeleteTournament = async () => {
-    if (!tournamentToDelete) return;
+    if (!tournamentToDelete || isDeletingTournament) return;
     try {
       setIsDeletingTournament(true);
       await supabase
@@ -195,8 +195,7 @@ export const HomePage: React.FC = () => {
 
   const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
-    if (!name.trim()) return;
+    if (!isAdmin || !name.trim() || submitting) return;
 
     try {
       setSubmitting(true);
@@ -1179,9 +1178,13 @@ export const HomePage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
                     >
-                      <Plus className="w-4 h-4 stroke-[3]" />
+                      {submitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      )}
                       <span>
                         {submitting ? "กำลังสร้าง..." : "สร้างทัวร์นาเมนต์"}
                       </span>
@@ -1232,7 +1235,7 @@ export const HomePage: React.FC = () => {
                 type="button"
                 disabled={isDeletingTournament}
                 onClick={handleDeleteTournament}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
                 {isDeletingTournament ? (
                   <>

@@ -114,16 +114,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             type="button"
             disabled={isLoading}
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white/[0.05] hover:bg-white/[0.09] text-gray-300 hover:text-white border border-white/10 transition-all disabled:opacity-50"
+            onClick={() => !isLoading && onClose()}
+            className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white/[0.05] hover:bg-white/[0.09] text-gray-300 hover:text-white border border-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
           >
             {cancelText}
           </button>
           <button
             type="button"
             disabled={isLoading}
-            onClick={onConfirm}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 ${variantStyles.confirmBtn}`}
+            onClick={() => !isLoading && onConfirm()}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer ${variantStyles.confirmBtn}`}
           >
             {isLoading ? (
               <>

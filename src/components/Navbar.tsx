@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Shield, LogIn, LogOut } from "lucide-react";
+import { Home, Shield, LogIn, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 interface NavbarProps {
@@ -13,6 +13,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const isCurrent = (path: string) => location.pathname === path;
 
@@ -60,12 +71,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="navbar-logout-btn"
               type="button"
-              onClick={signOut}
+              disabled={isLoggingOut}
+              onClick={handleLogout}
               title={user.email ?? undefined}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-400 hover:text-rose-300 hover:bg-white/5 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-400 hover:text-rose-300 hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">ออกจากระบบ</span>
+              {isLoggingOut ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogOut className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {isLoggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"}
+              </span>
             </button>
           ) : (
             !isCurrent("/login") && (

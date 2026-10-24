@@ -50,6 +50,7 @@ import {
   Shield,
   History,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 
 interface PendingPastRoundEdit {
@@ -115,6 +116,7 @@ export const AdminTournamentPage: React.FC = () => {
   const [formDeckBoss, setFormDeckBoss] = useState("");
   const [submittingPlayer, setSubmittingPlayer] = useState(false);
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
+  const [isEndingTournament, setIsEndingTournament] = useState(false);
 
   // Fetch nations and bosses
   const fetchBossesAndNations = async () => {
@@ -380,19 +382,27 @@ export const AdminTournamentPage: React.FC = () => {
 
   // 2. ฟังก์ชันนี้จะทำงานเมื่อกดปุ่ม "ยืนยัน" ข้างใน Modal
   const confirmEndTournament = async () => {
-    if (!tournament) return;
-    setIsEndModalOpen(false); // ปิด Modal
+    if (!tournament || isEndingTournament) return;
+    try {
+      setIsEndingTournament(true);
+      const { error } = await supabase
+        .from("tournaments")
+        .update({
+          status: "completed",
+          timer_ends_at: null,
+          timer_paused_remaining_seconds: null,
+        })
+        .eq("id", tournament.id);
 
-    await supabase
-      .from("tournaments")
-      .update({
-        status: "completed",
-        timer_ends_at: null,
-        timer_paused_remaining_seconds: null,
-      })
-      .eq("id", tournament.id);
-
-    await fetchData();
+      if (error) throw error;
+      await fetchData();
+      setIsEndModalOpen(false);
+    } catch (err: any) {
+      console.error("Failed to end tournament:", err);
+      alert("ไม่สามารถจบการแข่งขันได้: " + (err.message || ""));
+    } finally {
+      setIsEndingTournament(false);
+    }
   };
 
   const handleStartTimer = async () => {
@@ -538,7 +548,7 @@ export const AdminTournamentPage: React.FC = () => {
 
   const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlayer || !formName.trim()) return;
+    if (!editingPlayer || !formName.trim() || submittingPlayer) return;
 
     try {
       setSubmittingPlayer(true);
@@ -1140,22 +1150,28 @@ export const AdminTournamentPage: React.FC = () => {
                           hasPendingMatchesInCurrentRound) ||
                         tournament.current_round >= tournament.max_rounds
                       }
-                      className={`px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg transition-all ${
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer ${
                         hasPendingMatchesInCurrentRound &&
                         tournament.status === "ongoing"
-                          ? "bg-white/[0.04] text-gray-500 cursor-not-allowed border border-white/[0.06]"
+                          ? "bg-white/[0.04] text-gray-500 border border-white/[0.06]"
                           : tournament.current_round >= tournament.max_rounds
-                            ? "bg-white/[0.04] text-gray-500 cursor-not-allowed"
+                            ? "bg-white/[0.04] text-gray-500"
                             : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 shadow-[0_0_20px_rgba(245,158,11,0.25)] active:scale-95"
                       }`}
                     >
-                      <Play className="w-4 h-4 fill-current" />
+                      {isGeneratingRound ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 fill-current" />
+                      )}
                       <span>
-                        {tournament.current_round === 0
-                          ? "เริ่มรอบที่ 1 (Start Round 1)"
-                          : tournament.current_round === tournament.max_rounds
-                            ? "จบการแข่งขัน (End Tournament)"
-                            : `รอบที่ ${tournament.current_round + 1}`}
+                        {isGeneratingRound
+                          ? "กำลังสุ่มประกบคู่..."
+                          : tournament.current_round === 0
+                            ? "เริ่มรอบที่ 1 (Start Round 1)"
+                            : tournament.current_round === tournament.max_rounds
+                              ? "จบการแข่งขัน (End Tournament)"
+                              : `รอบที่ ${tournament.current_round + 1}`}
                       </span>
                     </button>
                   )}
@@ -1641,9 +1657,16 @@ export const AdminTournamentPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submittingPlayer}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 text-sm font-black shadow-md"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
                 >
-                  {submittingPlayer ? "กำลังบันทึก..." : "เพิ่มผู้เล่น"}
+                  {submittingPlayer ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <span>เพิ่มผู้เล่น</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1746,9 +1769,16 @@ export const AdminTournamentPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submittingPlayer}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 text-sm font-black shadow-md"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 text-sm font-black shadow-md flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
                 >
-                  {submittingPlayer ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+                  {submittingPlayer ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <span>บันทึกการแก้ไข</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1858,17 +1888,26 @@ export const AdminTournamentPage: React.FC = () => {
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
+                disabled={isEndingTournament}
                 onClick={() => setIsEndModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/10 transition-all"
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/10 transition-all disabled:opacity-50"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
+                disabled={isEndingTournament}
                 onClick={confirmEndTournament}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-amber-500 hover:bg-amber-400 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all"
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-amber-500 hover:bg-amber-400 text-gray-950 shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
-                ยืนยันจบการแข่งขัน
+                {isEndingTournament ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>กำลังจบการแข่งขัน...</span>
+                  </>
+                ) : (
+                  <span>ยืนยันจบการแข่งขัน</span>
+                )}
               </button>
             </div>
           </div>
@@ -2058,11 +2097,11 @@ export const AdminTournamentPage: React.FC = () => {
                 type="button"
                 disabled={isDeletingTournament}
                 onClick={handleDeleteTournament}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
                 {isDeletingTournament ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span>กำลังลบ...</span>
                   </>
                 ) : (

@@ -239,9 +239,9 @@ export const ReportMatchModal: React.FC<ReportMatchModalProps> = ({
             type="button"
             onClick={handleSave}
             disabled={submitting || (!selectedWinnerId && !selectedDoubleLoss)}
-            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 shadow-lg transition-all ${
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer ${
               !selectedWinnerId && !selectedDoubleLoss
-                ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
+                ? 'bg-gray-800 text-gray-500 border border-white/5'
                 : isPastRound
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 shadow-amber-500/25 active:scale-95'
                 : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-gray-950 shadow-emerald-500/25 active:scale-95'
