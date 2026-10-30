@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { HomePage } from './pages/HomePage';
 import { AuthProvider } from './contexts/AuthContext';
 import { AdminRoute } from './components/AdminRoute';
+import { SuperAdminRoute } from './components/SuperAdminRoute';
 
 // Code-split secondary pages so visitors only download what they open
 // (admin page code is never fetched by non-admin users).
@@ -18,6 +19,9 @@ const TvBroadcastPage = lazy(() =>
 );
 const LoginPage = lazy(() =>
   import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })),
+);
+const SuperAdminPage = lazy(() =>
+  import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage })),
 );
 
 const PageLoader: React.FC = () => (
@@ -44,6 +48,15 @@ export const App: React.FC = () => {
                 </AdminRoute>
               }
             />
+            <Route
+              path="/super-admin"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminPage />
+                </SuperAdminRoute>
+              }
+            />
+            <Route path="/superadmin" element={<Navigate to="/super-admin" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

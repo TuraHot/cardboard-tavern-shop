@@ -28,9 +28,11 @@ import { NationBadge } from "../components/NationBadge";
 import { BossManagerModal } from "../components/BossManagerModal";
 import { EditTournamentModal } from "../components/EditTournamentModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { ShareTournamentModal } from "../components/ShareTournamentModal";
 import { DeckBossAutocomplete } from "../components/DeckBossAutocomplete";
 import { exportPairingsPdf, exportStandingsPdf } from "../utils/pdfExport";
 import { Footer } from "../components/Footer";
+import { sounds } from "../utils/audio";
 import {
   Users,
   Swords,
@@ -41,7 +43,6 @@ import {
   Trash2,
   UserX,
   UserCheck,
-  Tv,
   AlertTriangle,
   AlertCircle,
   CheckCircle,
@@ -51,6 +52,7 @@ import {
   History,
   RotateCcw,
   Loader2,
+  Share2,
 } from "lucide-react";
 
 interface PendingPastRoundEdit {
@@ -89,6 +91,7 @@ export const AdminTournamentPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingTournament, setIsDeletingTournament] = useState(false);
   const [isEditTournamentOpen, setIsEditTournamentOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isResetRound1ModalOpen, setIsResetRound1ModalOpen] = useState(false);
   const [isResettingRound1, setIsResettingRound1] = useState(false);
 
@@ -332,33 +335,17 @@ export const AdminTournamentPage: React.FC = () => {
           .eq("id", pairingResult.byePlayerId);
       }
 
-      const durationSec = tournament.round_duration_minutes * 60;
-      let timerHandledByRpc = false;
-
-      // Try server timer RPC first (syncs with Server timestamp NOW())
-      const { error: rpcErr } = await supabase.rpc("start_tournament_timer", {
-        p_tournament_id: tournament.id,
-        p_seconds: durationSec,
-      });
-
-      if (!rpcErr) {
-        timerHandledByRpc = true;
-      }
-
-      const durationMs = durationSec * 1000;
-      const endsAt = new Date(Date.now() + durationMs).toISOString();
+      // เริ่มต้นรอบด้วยเวลาเตรียมตัว 5 นาที (300 วินาที)
+      const prepDurationSec = 5 * 60;
+      const endsAt = new Date(Date.now() + prepDurationSec * 1000).toISOString();
 
       const { error: tErr } = await supabase
         .from("tournaments")
         .update({
           status: "ongoing",
           current_round: nextRoundNum,
-          ...(timerHandledByRpc
-            ? {}
-            : {
-                timer_ends_at: endsAt,
-                timer_paused_remaining_seconds: null,
-              }),
+          timer_ends_at: endsAt,
+          timer_paused_remaining_seconds: -1,
         })
         .eq("id", tournament.id);
 
@@ -405,21 +392,64 @@ export const AdminTournamentPage: React.FC = () => {
     }
   };
 
+  // ข้ามเวลาเตรียมตัว และเริ่มจับเวลาการแข่งขันทันที
+  const handleSkipPrep = async () => {
+    if (!tournament) return;
+    sounds.alarm();
+    const matchSec = tournament.round_duration_minutes * 60;
+    const endsAt = new Date(Date.now() + matchSec * 1000).toISOString();
+
+    await supabase
+      .from("tournaments")
+      .update({
+        timer_ends_at: endsAt,
+        timer_paused_remaining_seconds: null,
+      })
+      .eq("id", tournament.id);
+
+    await fetchData();
+  };
+
+  // เริ่มเวลาเตรียมตัว 5 นาที
+  const handleStartPrep = async () => {
+    if (!tournament) return;
+    sounds.tick();
+    const prepSec = 5 * 60;
+    const endsAt = new Date(Date.now() + prepSec * 1000).toISOString();
+
+    await supabase
+      .from("tournaments")
+      .update({
+        timer_ends_at: endsAt,
+        timer_paused_remaining_seconds: -1,
+      })
+      .eq("id", tournament.id);
+
+    await fetchData();
+  };
+
   const handleStartTimer = async () => {
     if (!tournament) return;
-    const remainingSec =
-      tournament.timer_paused_remaining_seconds !== null
-        ? tournament.timer_paused_remaining_seconds
-        : tournament.round_duration_minutes * 60;
+    const isPrep =
+      tournament.timer_paused_remaining_seconds !== null &&
+      tournament.timer_paused_remaining_seconds < 0;
 
-    // 1. Try server timer RPC first (syncs with Server timestamp NOW())
-    const { error: rpcError } = await supabase.rpc("start_tournament_timer", {
-      p_tournament_id: tournament.id,
-      p_seconds: remainingSec,
-    });
+    if (isPrep && tournament.timer_paused_remaining_seconds !== null) {
+      const remainingSec = Math.abs(tournament.timer_paused_remaining_seconds);
+      const endsAt = new Date(Date.now() + remainingSec * 1000).toISOString();
+      await supabase
+        .from("tournaments")
+        .update({
+          timer_ends_at: endsAt,
+          timer_paused_remaining_seconds: -1,
+        })
+        .eq("id", tournament.id);
+    } else {
+      const remainingSec =
+        tournament.timer_paused_remaining_seconds !== null
+          ? tournament.timer_paused_remaining_seconds
+          : tournament.round_duration_minutes * 60;
 
-    // 2. Fallback to client timestamp if RPC is not installed yet
-    if (rpcError) {
       const endsAt = new Date(Date.now() + remainingSec * 1000).toISOString();
       await supabase
         .from("tournaments")
@@ -435,6 +465,10 @@ export const AdminTournamentPage: React.FC = () => {
 
   const handlePauseTimer = async () => {
     if (!tournament || !tournament.timer_ends_at) return;
+    const isPrep =
+      tournament.timer_paused_remaining_seconds !== null &&
+      tournament.timer_paused_remaining_seconds < 0;
+
     const diff = Math.floor(
       (new Date(tournament.timer_ends_at).getTime() - Date.now()) / 1000,
     );
@@ -444,7 +478,7 @@ export const AdminTournamentPage: React.FC = () => {
       .from("tournaments")
       .update({
         timer_ends_at: null,
-        timer_paused_remaining_seconds: remaining,
+        timer_paused_remaining_seconds: isPrep ? -remaining : remaining,
       })
       .eq("id", tournament.id);
 
@@ -1018,6 +1052,9 @@ export const AdminTournamentPage: React.FC = () => {
                 onStart={handleStartTimer}
                 onPause={handlePauseTimer}
                 onReset={handleResetTimer}
+                onSkipPrep={handleSkipPrep}
+                onStartPrep={handleStartPrep}
+                onPrepTimeEnd={handleSkipPrep}
               />
 
               <div className="flex flex-wrap items-center gap-2.5 justify-start lg:justify-end">
@@ -1029,14 +1066,24 @@ export const AdminTournamentPage: React.FC = () => {
                   <span>🍀 สุ่ม Lucky Draw</span>
                 </button>
 
-                <Link
+                {/* <Link
                   to={`/tournament/${tournament.id}/tv`}
                   target="_blank"
                   className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-cyan-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
                 >
                   <Tv className="w-4 h-4 text-cyan-400" />
                   <span>เปิดจอ TV</span>
-                </Link>
+                </Link> */}
+
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 hover:text-sky-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                  title="แชร์การแข่งขันนี้"
+                >
+                  <Share2 className="w-4 h-4 text-sky-400" />
+                  <span>แชร์การแข่งขัน</span>
+                </button>
 
                 <button
                   type="button"
@@ -2133,6 +2180,15 @@ export const AdminTournamentPage: React.FC = () => {
           setTournament(updated);
         }}
       />
+      {/* Modal แชร์การแข่งขัน */}
+      {tournament && (
+        <ShareTournamentModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          tournament={tournament}
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 };

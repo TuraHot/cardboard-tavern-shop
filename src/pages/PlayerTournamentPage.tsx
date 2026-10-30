@@ -9,12 +9,14 @@ import { PairingsList } from "../components/PairingsList";
 import { StandingsTable } from "../components/StandingsTable";
 import { MetaAnalytics } from "../components/MetaAnalytics";
 import { Footer } from "../components/Footer";
+import { ShareTournamentModal } from "../components/ShareTournamentModal";
 import {
   Swords,
   Trophy,
   AlertCircle,
   CheckCircle,
   BarChart3,
+  Share2,
 } from "lucide-react";
 
 export const PlayerTournamentPage: React.FC = () => {
@@ -29,6 +31,7 @@ export const PlayerTournamentPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"pairings" | "standings" | "meta">(
     "pairings",
   );
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Fetch all tournament data (3 queries in parallel)
   const fetchData = async () => {
@@ -209,8 +212,8 @@ export const PlayerTournamentPage: React.FC = () => {
               </div>
             </div>
 
-            {tournament.status === "ongoing" && (
-              <div>
+            <div className="flex flex-col sm:items-end gap-3 flex-shrink-0">
+              {tournament.status === "ongoing" && (
                 <CountdownTimer
                   timerEndsAt={tournament.timer_ends_at}
                   timerPausedRemainingSeconds={
@@ -219,8 +222,18 @@ export const PlayerTournamentPage: React.FC = () => {
                   roundDurationMinutes={tournament.round_duration_minutes}
                   size="md"
                 />
-              </div>
-            )}
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm self-start sm:self-auto"
+                title="แชร์การแข่งขันนี้"
+              >
+                <Share2 className="w-4 h-4 text-amber-400" />
+                <span>แชร์การแข่งขัน</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -351,6 +364,15 @@ export const PlayerTournamentPage: React.FC = () => {
       </main>
 
       <Footer />
+
+      {tournament && (
+        <ShareTournamentModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          tournament={tournament}
+          isAdmin={false}
+        />
+      )}
     </div>
   );
 };
