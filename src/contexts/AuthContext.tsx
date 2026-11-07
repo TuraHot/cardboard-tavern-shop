@@ -11,8 +11,8 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { SessionTimeoutModal } from "../components/SessionTimeoutModal";
 
-// 15 minutes of inactivity before auto-logout
-export const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+// 1 hour of inactivity before auto-logout
+export const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
 // Show warning modal 60 seconds before auto-logout
 export const WARNING_BEFORE_MS = 60 * 1000;
 
