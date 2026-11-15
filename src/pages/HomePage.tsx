@@ -18,7 +18,6 @@ import {
   Loader2,
   X,
   Search,
-  CheckCircle2,
   Copy,
 } from "lucide-react";
 import { compressImage } from "../utils/compressImage";
@@ -355,13 +354,6 @@ export const HomePage: React.FC = () => {
 
   const FORMAT_OPTIONS = ["Standard TH", "Standard JP", "Premium TH"] as const;
 
-  const activeCount = tournaments.filter(
-    (t) => t.status !== "completed",
-  ).length;
-  const completedCount = tournaments.filter(
-    (t) => t.status === "completed",
-  ).length;
-
   const filteredTournaments = tournaments.filter((t) => {
     if (statusFilter === "active" && t.status === "completed") return false;
     if (statusFilter === "completed" && t.status !== "completed") return false;
@@ -429,124 +421,72 @@ export const HomePage: React.FC = () => {
 
         {/* Search & Filter Toolbar */}
         {!loading && tournaments.length > 0 && (
-          <div className="mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3.5 rounded-2xl shadow-lg backdrop-blur-md space-y-3">
-            {/* Row 1: Status Filter & Search */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              {/* Status Tabs */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 shrink-0">
-                  สถานะ:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("all")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                    statusFilter === "all"
-                      ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
-                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                  }`}
-                >
-                  <span>ทั้งหมด</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                    {tournaments.length}
-                  </span>
-                </button>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3 rounded-2xl shadow-lg backdrop-blur-md">
+            {/* Filter Dropdowns */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
+              <select
+                aria-label="กรองตามสถานะการแข่งขัน"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as "all" | "active" | "completed",
+                  )
+                }
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer"
+              >
+                <option value="all" className="bg-[#0e1422] text-white">
+                  ทั้งหมด ({tournaments.length})
+                </option>
+                <option value="active" className="bg-[#0e1422] text-white">
+                  เปิดรับสมัคร & กำลังแข่งขัน
+                </option>
+                <option value="completed" className="bg-[#0e1422] text-white">
+                  จบการแข่งขันแล้ว
+                </option>
+              </select>
 
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("active")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                    statusFilter === "active"
-                      ? "bg-emerald-500 text-gray-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>เปิดรับสมัคร & กำลังแข่งขัน</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                    {activeCount}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("completed")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                    statusFilter === "completed"
-                      ? "bg-slate-300 text-gray-950 font-black shadow-sm"
-                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>จบการแข่งขันแล้ว</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                    {completedCount}
-                  </span>
-                </button>
-              </div>
-
-              {/* Search Input */}
-              <div className="relative w-full lg:w-72 shrink-0">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ค้นหาชื่อการแข่งขัน, สถานที่..."
-                  className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+              <select
+                aria-label="กรองตาม Format การแข่งขัน"
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value)}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer"
+              >
+                <option value="all" className="bg-[#0e1422] text-white">
+                  ทั้งหมด ({tournaments.length})
+                </option>
+                {FORMAT_OPTIONS.map((fmt) => {
+                  return (
+                    <option
+                      key={fmt}
+                      value={fmt}
+                      className="bg-[#0e1422] text-white"
+                    >
+                      {fmt}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
-            {/* Row 2: Format Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 border-t border-white/[0.06]">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 shrink-0">
-                Format:
-              </span>
-              <button
-                type="button"
-                onClick={() => setFormatFilter("all")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  formatFilter === "all"
-                    ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
-                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                }`}
-              >
-                <span>ทุก Format</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                  {tournaments.length}
-                </span>
-              </button>
-
-              {FORMAT_OPTIONS.map((fmt) => {
-                const count = tournaments.filter((t) => t.format === fmt).length;
-                return (
-                  <button
-                    key={fmt}
-                    type="button"
-                    onClick={() => setFormatFilter(fmt)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                      formatFilter === fmt
-                        ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
-                        : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                    }`}
-                  >
-                    <span>{fmt}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+            {/* Search Input */}
+            <div className="relative w-full md:w-72 shrink-0">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อการแข่งขัน, สถานที่..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -619,7 +559,7 @@ export const HomePage: React.FC = () => {
               const maxCap = tourney.max_players || 20;
               const feeText =
                 tourney.entry_fee !== undefined
-                  ? tourney.entry_fee === 0 ? "Free" : `฿${tourney.entry_fee}`
+                  ? tourney.entry_fee === 0 ? "฿Free" : `฿${tourney.entry_fee}`
                   : "฿70";
               const shopName = tourney.store_name || "Cardboard Tavern";
               const venue =
