@@ -49,6 +49,7 @@ export const HomePage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "completed"
   >("all");
+  const [formatFilter, setFormatFilter] = useState<string>("all");
   // Form states for creating tournament
   const [name, setName] = useState("แข่งแวนการ์ด D TH วันเสาร์");
   const [format, setFormat] = useState<TournamentFormat>("Standard TH");
@@ -64,12 +65,11 @@ export const HomePage: React.FC = () => {
   const [bannerUrl, setBannerUrl] = useState("/images/vanguard_banner_1.jpg");
   const [maxRounds, setMaxRounds] = useState(4);
   const [roundDuration, setRoundDuration] = useState(30);
-  const [description, setDescription] = useState(
-    "รางวัลอันดับที่ 1-3 : การ์ดโปรโมประจำเดือน คนละ 4 ใบ\n" +
-      "รางวัลอันดับที่ 4 เป็นต้นไป : การ์ดโปรโม คนละ 4 ใบ\n" +
-      "มี Lucky Draw สุ่มแจกการ์ดพิเศษ (กรณีผู้แข่ง 16 คนขึ้นไป)\n" +
-      "เปิดลงทะเบียน walk in 12:00 น. | เริ่มแพริ่งแข่งขัน 14:30 น.",
-  );
+  const info = {
+    th: "รางวัลอันดับที่ 1-3 โปรโมเดือนนี้คนละ 4 ใบ\nได้รับ Voucher กรณีมีผู้เข้าแข่งขัน 6 คนขึ้นไป\nอันดับที่ 4 เป็นต้นไปคนละ 2 ใบ\nมี Lucky Draw 🍀 กรณีผู้แข่ง 16 คนขึ้นไป",
+    jp: "รางวัลอันดับที่ 1–3: Cash Voucher\nรางวัลเข้าร่วม: ซอง PR 1ea (1 ซอง)\nหมายเหตุ: รางวัลอาจมีการเปลี่ยนแปลงตามจำนวนผู้เข้าแข่งขัน",
+  };
+  const [description, setDescription] = useState(info.th);
 
   // Banner image upload & compression states
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -219,10 +219,7 @@ export const HomePage: React.FC = () => {
           if (uploadErr) {
             console.warn("Storage upload notice:", uploadErr);
             alert(
-              "⚠️ อัปโหลดรูปภาพไปยัง Bucket 'banners' ไม่สำเร็จ:\n" +
-                (uploadErr.message ||
-                  "กรุณาตรวจสอบว่าได้สร้าง Bucket 'banners' ใน Supabase Storage และเปิด Public Policy แล้ว") +
-                "\n\n(ระบบจะใช้รูปโปสเตอร์เริ่มต้นของร้านแทน เพื่อให้สร้างทัวร์นาเมนต์ได้สำเร็จ)",
+              "⚠️ อัปโหลดรูปภาพไม่สำเร็จ:\n"
             );
           } else if (uploadData) {
             const { data: urlData } = supabase.storage
@@ -319,8 +316,7 @@ export const HomePage: React.FC = () => {
         );
       } else {
         alert(
-          "ไม่สามารถสร้างทัวร์นาเมนต์ได้: " +
-            (err.message || "โปรดตรวจสอบการเชื่อมต่อ Supabase"),
+          "ไม่สามารถสร้างทัวร์นาเมนต์ได้"
         );
       }
     } finally {
@@ -357,6 +353,8 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const FORMAT_OPTIONS = ["Standard TH", "Standard JP", "Premium TH"] as const;
+
   const activeCount = tournaments.filter(
     (t) => t.status !== "completed",
   ).length;
@@ -367,6 +365,7 @@ export const HomePage: React.FC = () => {
   const filteredTournaments = tournaments.filter((t) => {
     if (statusFilter === "active" && t.status === "completed") return false;
     if (statusFilter === "completed" && t.status !== "completed") return false;
+    if (formatFilter !== "all" && t.format !== formatFilter) return false;
 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
@@ -430,76 +429,124 @@ export const HomePage: React.FC = () => {
 
         {/* Search & Filter Toolbar */}
         {!loading && tournaments.length > 0 && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3 rounded-2xl shadow-lg backdrop-blur-md">
-            {/* Status Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+          <div className="mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3.5 rounded-2xl shadow-lg backdrop-blur-md space-y-3">
+            {/* Row 1: Status Filter & Search */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Status Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 shrink-0">
+                  สถานะ:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    statusFilter === "all"
+                      ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                  }`}
+                >
+                  <span>ทั้งหมด</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                    {tournaments.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("active")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    statusFilter === "active"
+                      ? "bg-emerald-500 text-gray-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>เปิดรับสมัคร & กำลังแข่งขัน</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                    {activeCount}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("completed")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    statusFilter === "completed"
+                      ? "bg-slate-300 text-gray-950 font-black shadow-sm"
+                      : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>จบการแข่งขันแล้ว</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                    {completedCount}
+                  </span>
+                </button>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative w-full lg:w-72 shrink-0">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ค้นหาชื่อการแข่งขัน, สถานที่..."
+                  className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: Format Filter */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 border-t border-white/[0.06]">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 shrink-0">
+                Format:
+              </span>
               <button
                 type="button"
-                onClick={() => setStatusFilter("all")}
+                onClick={() => setFormatFilter("all")}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  statusFilter === "all"
+                  formatFilter === "all"
                     ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
                     : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
                 }`}
               >
-                <span>ทั้งหมด</span>
+                <span>ทุก Format</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
                   {tournaments.length}
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setStatusFilter("active")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  statusFilter === "active"
-                    ? "bg-emerald-500 text-gray-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>เปิดรับสมัคร & กำลังแข่งขัน</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                  {activeCount}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatusFilter("completed")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  statusFilter === "completed"
-                    ? "bg-slate-300 text-gray-950 font-black shadow-sm"
-                    : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>จบการแข่งขันแล้ว</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
-                  {completedCount}
-                </span>
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหาชื่อการแข่งขัน, สถานที่..."
-                className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+              {FORMAT_OPTIONS.map((fmt) => {
+                const count = tournaments.filter((t) => t.format === fmt).length;
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => setFormatFilter(fmt)}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                      formatFilter === fmt
+                        ? "bg-amber-500 text-gray-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                        : "bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] border border-white/5"
+                    }`}
+                  >
+                    <span>{fmt}</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -541,13 +588,14 @@ export const HomePage: React.FC = () => {
               ไม่พบการแข่งขันที่ตรงกับเงื่อนไข
             </h3>
             <p className="text-gray-400 text-xs mb-5">
-              ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองสถานะอื่น
+              ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองสถานะ / Format อื่น
             </p>
             <button
               type="button"
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("all");
+                setFormatFilter("all");
               }}
               className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
             >
@@ -571,7 +619,7 @@ export const HomePage: React.FC = () => {
               const maxCap = tourney.max_players || 20;
               const feeText =
                 tourney.entry_fee !== undefined
-                  ? `฿${tourney.entry_fee}`
+                  ? tourney.entry_fee === 0 ? "Free" : `฿${tourney.entry_fee}`
                   : "฿70";
               const shopName = tourney.store_name || "Cardboard Tavern";
               const venue =
@@ -706,7 +754,7 @@ export const HomePage: React.FC = () => {
                               setTournamentToDuplicate(tourney);
                             }}
                             className="p-1.5 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 transition-all text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95"
-                            title="คัดลอกการแข่งขันนี้ (Duplicate)"
+                            title="คัดลอกการแข่งขันนี้"
                           >
                             <Copy className="w-3.5 h-3.5" />
                             <span className="text-[11px]">คัดลอก</span>
@@ -786,12 +834,15 @@ export const HomePage: React.FC = () => {
                         if (newFormat === "Standard TH") {
                           setBannerUrl("/images/vanguard_banner_1.jpg");
                           setName("แข่งแวนการ์ด D TH วันเสาร์");
+                          setDescription(info.th);
                         } else if (newFormat === "Premium TH") {
                           setBannerUrl("/images/vanguard_banner_2.jpg");
                           setName("แข่งแวนการ์ด Premium วันอาทิตย์");
+                          setDescription(info.th);
                         } else if (newFormat === "Standard JP") {
-                          setBannerUrl("/images/vanguard_banner_1.jpg");
+                          setBannerUrl("/images/vanguard_banner_3.jpg");
                           setName("แข่งแวนการ์ด D JP วันพฤหัสบดี");
+                          setDescription(info.jp);
                         }
                       }}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
@@ -810,7 +861,7 @@ export const HomePage: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-200 mb-1.5">
-                      วันและเวลาเริ่มแข่ง (24 ชม.){" "}
+                      วันและเวลาเริ่มแข่ง{" "}
                       <span className="text-amber-400">*</span>
                     </label>
 
@@ -1138,11 +1189,9 @@ export const HomePage: React.FC = () => {
                     {/* ปุ่มลัดช่วยกรอกแพตเทิร์นของร้านอัตโนมัติ */}
                     <button
                       type="button"
-                      onClick={() =>
-                        setDescription(
-                          "รางวัลอันดับที่ 1-3 โปรโมเดือนนี้คนละ 4 ใบ+\nอันดับที่ 4 เป็นต้นไปคนละ 4 ใบ\nมี Lucky Draw 🍀 กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30",
-                        )
-                      }
+                      onClick={() => {
+                        setDescription(format === "Standard JP" ? info.jp : info.th);
+                      }}
                       className="text-[11px] text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 transition-colors"
                     >
                       + ใช้ข้อความตั้งต้นของร้าน
@@ -1153,9 +1202,7 @@ export const HomePage: React.FC = () => {
                     rows={4}
                     value={description?.replace(/\\n/g, "\n") || ""}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder={
-                      "เช่น:\nรางวัลอันดับที่ 1-3 โปรโมเดือนนี้...\nมี Lucky Draw กรณีผู้แข่ง 16 คนขึ้นไป\nเปิดลงทะเบียน Walk-in 12:00 เริ่มแพริ่ง 14:30"
-                    }
+                    placeholder={"เช่น:\nรางวัลอันดับที่ 1-3 ได้รับ..."}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 resize-y"
                   />
                 </div>

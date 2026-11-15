@@ -131,6 +131,19 @@ export const VANGUARD_NATIONS: NationConfig[] = [
     abbName: 'SS',
     iconUrl: getNationIconUrl('SS'),
     fallbackIconUrl: getLocalNationIconUrl('SS'),
+  },
+  {
+    name: 'Bang Dream',
+    thaiName: 'Bang Dream',
+    colorCode: '#E5004F',
+    badgeClass: 'bg-rose-950/40 text-rose-200 border-[#E5004F]/40 shadow-[0_0_12px_rgba(229,0,79,0.2)] ring-1 ring-[#E5004F]/30',
+    pillColor: 'bg-[#E5004F]/10 text-rose-200 border-[#E5004F]/30',
+    dotColor: 'bg-[#E5004F] shadow-[0_0_8px_rgba(229,0,79,0.8)]',
+    glowColor: 'shadow-[#E5004F]/20',
+    iconSymbol: '🎸',
+    abbName: 'BD',
+    iconUrl: getNationIconUrl('BD'),
+    fallbackIconUrl: getLocalNationIconUrl('BD'),
   }
 ];
 
@@ -177,15 +190,19 @@ ensureNationsLoaded();
 
 export function getNationConfig(nation: string): NationConfig {
   const normalized = (nation || '').toLowerCase().trim();
-  const dbEntry = nationDbMap.get(normalized);
 
   const found = VANGUARD_NATIONS.find(
     (n) =>
       n.name.toLowerCase() === normalized ||
       n.thaiName.toLowerCase() === normalized ||
       (n.abbName && n.abbName.toLowerCase() === normalized) ||
-      (n.name === 'Super Sentai' && (normalized === 'ซุปเปร์เซนไต' || normalized === 'ซูปเปอร์เซนไต' || normalized === 'ซูเปอร์เซนไต'))
+      (n.name === 'Super Sentai' && (normalized === 'ซุปเปร์เซนไต' || normalized === 'ซูปเปอร์เซนไต' || normalized === 'ซูเปอร์เซนไต')) ||
+      (n.name === 'Bang Dream' && (normalized === 'bangdream' || normalized === 'bang dream!' || normalized === 'แบงดรีม'))
   );
+
+  const dbEntry =
+    nationDbMap.get(normalized) ||
+    (found ? nationDbMap.get(found.name.toLowerCase()) : undefined);
 
   if (found) {
     const finalColorCode = dbEntry?.color_code || found.colorCode;

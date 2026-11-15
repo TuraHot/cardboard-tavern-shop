@@ -2,9 +2,7 @@ export type TournamentFormat =
   | 'Standard JP'
   | 'Standard TH'
   | 'Premium TH'
-  | 'Standard'
   | 'V-Premium'
-  | 'Premium'
   | string;
 
 export type TournamentStatus = 'registering' | 'ongoing' | 'completed';
@@ -17,6 +15,7 @@ export type VanguardNation =
   | 'Stoicheia'
   | 'Lyrical Monasterio'
   | 'Super Sentai'
+  | 'Bang Dream'
   | 'Other';
 
 export interface Tournament {

@@ -738,7 +738,7 @@ export const AdminTournamentPage: React.FC = () => {
     winnerId: string | null,
     isDoubleLoss: boolean,
   ) => {
-    if (!selectedMatch || !tournament) return;
+    if (!selectedMatch || !tournament || tournament.status === "completed") return;
 
     const isCurrentActiveRound =
       tournament.status === "ongoing" &&
@@ -789,7 +789,7 @@ export const AdminTournamentPage: React.FC = () => {
   };
 
   const handleConfirmPastRoundEditAndRepair = async () => {
-    if (!pendingPastRoundEdit || !tournament) return;
+    if (!pendingPastRoundEdit || !tournament || tournament.status === "completed") return;
     const { match: editedMatch, winnerId, isDoubleLoss } = pendingPastRoundEdit;
     const editedRound = editedMatch.round_number;
 
@@ -871,7 +871,7 @@ export const AdminTournamentPage: React.FC = () => {
   };
 
   const handleConfirmResetRound1 = async () => {
-    if (!tournament) return;
+    if (!tournament || tournament.status === "completed") return;
     try {
       setIsResettingRound1(true);
 
@@ -1307,6 +1307,10 @@ export const AdminTournamentPage: React.FC = () => {
                   <span className="text-[11px] text-gray-400 font-medium">
                     *กรุณากดปุ่ม &quot;เริ่มรอบที่ 1&quot; ด้านบนเพื่อทำการจับคู่แข่งขัน
                   </span>
+                ) : tournament.status === "completed" ? (
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    *จบการแข่งขันแล้ว ไม่สามารถแก้ไขผลการแข่งขันได้
+                  </span>
                 ) : isCurrentRoundActive ? (
                   <span className="text-[11px] text-amber-300/80 font-medium">
                     *Admin สามารถคลิกโต๊ะใดก็ได้เพื่อแก้ไขผลการแข่งได้ทันที
@@ -1321,8 +1325,9 @@ export const AdminTournamentPage: React.FC = () => {
               <PairingsList
                 matches={displayedMatches}
                 players={players}
-                canReport={tournament.status !== "registering"}
+                canReport={tournament.status === "ongoing"}
                 onSelectMatch={(m) => {
+                  if (tournament.status !== "ongoing") return;
                   setSelectedMatch(m);
                   setIsReportOpen(true);
                 }}
@@ -1345,7 +1350,7 @@ export const AdminTournamentPage: React.FC = () => {
         {/* Tab 2: Player Management */}
         {activeTab === "players" && (
           <div className="space-y-6">
-            {tournament.current_round === 1 && (
+            {tournament.current_round === 1 && tournament.status === "ongoing" && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
                 <div className="flex items-center gap-2.5">
                   <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
@@ -1431,7 +1436,7 @@ export const AdminTournamentPage: React.FC = () => {
                   </button>
                 )}
 
-                {tournament.current_round === 1 && tournament.status !== "registering" && (
+                {tournament.current_round === 1 && tournament.status === "ongoing" && (
                   <button
                     type="button"
                     onClick={() => setIsResetRound1ModalOpen(true)}
@@ -1844,7 +1849,7 @@ export const AdminTournamentPage: React.FC = () => {
 
       {/* Override Match Result Modal */}
       <ReportMatchModal
-        isOpen={isReportOpen}
+        isOpen={isReportOpen && tournament.status === "ongoing"}
         onClose={() => setIsReportOpen(false)}
         match={selectedMatch}
         player1={p1}
@@ -1852,13 +1857,9 @@ export const AdminTournamentPage: React.FC = () => {
         onSaveResult={handleSaveMatchResult}
         isAdmin={true}
         format={tournament?.format}
-        isPastRound={
-          Boolean(
-            selectedMatch &&
-              (selectedMatch.round_number < tournament.current_round ||
-                tournament.status === "completed"),
-          )
-        }
+        isPastRound={Boolean(
+          selectedMatch && selectedMatch.round_number < tournament.current_round,
+        )}
         currentRound={tournament.current_round}
       />
 
@@ -1911,7 +1912,7 @@ export const AdminTournamentPage: React.FC = () => {
             {/* รายละเอียดคำเตือน */}
             <p className="text-sm text-gray-300 leading-relaxed mb-4">
               เมื่อจบการแข่งขันแล้ว ระบบจะสรุปอันดับตารางคะแนนขั้นสุดท้าย
-              โดยจะไม่สามารถเปิดจับคู่รอบใหม่ได้อีก
+              โดยจะไม่สามารถเปิดจับคู่รอบใหม่หรือแก้ไขผลการแข่งขันได้อีก
             </p>
 
             {hasPendingMatchesInCurrentRound && (
