@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import { PlayerStanding } from "../types";
 import { NationBadge } from "./NationBadge";
-import { formatRate } from "../utils/tiebreaker";
 import { Medal, Award, Search, Crown, Printer } from "lucide-react";
+
+const formatPercent = (val: number): string => {
+  const safeVal = isNaN(val) || val === undefined || val === null ? 0.33 : val;
+  return `${(safeVal * 100).toFixed(2)}%`;
+};
 
 interface StandingsTableProps {
   standings: PlayerStanding[];
@@ -116,11 +120,12 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
               <tr className="border-b border-white/[0.08] bg-black/40 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                 <th className="py-3 px-4 text-center w-16">อันดับ</th>
                 <th className="py-3 px-4">ผู้เล่น</th>
+                <th className="py-3 px-4">ประเทศ / แวนการ์ดหลัก</th>
                 <th className="py-3 px-3 text-center">แต้ม</th>
                 <th className="py-3 px-3 text-center">ชนะ-แพ้</th>
                 <th
                   className="py-3 px-3 text-center"
-                  title="Opponent Match Win % (ขั้นต่ำ 0.33)"
+                  title="Opponent Match Win % (ขั้นต่ำ 33.00%)"
                 >
                   OMW
                 </th>
@@ -135,7 +140,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
             <tbody className="divide-y divide-white/[0.04] text-sm font-sans">
               {filteredStandings.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-500">
+                  <td colSpan={7} className="py-12 text-center text-gray-500">
                     ไม่พบข้อมูลผู้เล่นที่ค้นหา
                   </td>
                 </tr>
@@ -161,61 +166,67 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`font-bold text-base tracking-tight ${isChampion ? "gold-gradient-text" : "text-white"}`}
-                            >
-                              {s.player.name}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-bold text-base tracking-tight ${isChampion ? "gold-gradient-text" : "text-white"}`}
+                          >
+                            {s.player.name}
+                          </span>
+                          {isDropped && (
+                            <span className="text-[10px] px-2 py-0.2 rounded bg-red-950 text-red-400 border border-red-500/40">
+                              ดรอปแล้ว
                             </span>
-                            {isDropped && (
-                              <span className="text-[10px] px-2 py-0.2 rounded bg-red-950 text-red-400 border border-red-500/40">
-                                ดรอปแล้ว
-                              </span>
-                            )}
-                          </div>
-                          {showNationAndBoss ? (
-                            <NationBadge
-                              nation={s.player.nation}
-                              deckBoss={s.player.deck_boss}
-                              format={format}
-                              size="sm"
-                            />
-                          ) : (
-                            <></>
                           )}
                         </div>
                       </td>
 
+                      <td className="py-3.5 px-4">
+                        {showNationAndBoss &&
+                        (s.player.nation || s.player.deck_boss) ? (
+                          <NationBadge
+                            nation={s.player.nation}
+                            deckBoss={s.player.deck_boss}
+                            format={format}
+                            size="sm"
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-500 font-light">
+                            -
+                          </span>
+                        )}
+                      </td>
+
                       <td className="py-3.5 px-3 text-center">
                         <span
-                          className={`font-mono font-black text-lg ${isChampion ? "gold-gradient-text drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "text-amber-200"}`}
+                          className={`font-mono tabular-nums font-black text-lg ${isChampion ? "gold-gradient-text drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "text-amber-200"}`}
                         >
                           {s.points}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-3 text-center font-mono text-xs whitespace-nowrap">
-                        <span className="text-emerald-400 font-bold">
-                          {s.wins}
-                        </span>
-                        <span className="text-gray-500 mx-1.5">-</span>
-                        <span className="text-rose-400 font-bold">
-                          {s.losses}
-                        </span>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800/80 border border-slate-700/60 font-mono tabular-nums text-xs">
+                          <span className="text-emerald-400 font-bold">
+                            {s.wins}
+                          </span>
+                          <span className="text-gray-500">-</span>
+                          <span className="text-rose-400 font-bold">
+                            {s.losses}
+                          </span>
+                        </div>
                         {s.byes > 0 && (
-                          <span className="text-[10px] text-cyan-400 ml-1.5 px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/20">
+                          <span className="text-[10px] text-cyan-400 ml-1.5 px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/20 font-mono">
                             {s.byes} BYE
                           </span>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-3 text-center font-mono text-xs font-semibold text-gray-300">
-                        {formatRate(s.omw)}
+                      <td className="py-3.5 px-3 text-center font-mono tabular-nums text-xs font-semibold text-gray-300">
+                        {formatPercent(s.omw)}
                       </td>
 
-                      <td className="py-3.5 px-3 text-center font-mono text-xs font-semibold text-gray-400">
-                        {formatRate(s.oomw)}
+                      <td className="py-3.5 px-3 text-center font-mono tabular-nums text-xs font-semibold text-gray-400">
+                        {formatPercent(s.oomw)}
                       </td>
                     </tr>
                   );

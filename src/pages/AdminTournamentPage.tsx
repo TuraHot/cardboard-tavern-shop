@@ -1267,10 +1267,10 @@ export const AdminTournamentPage: React.FC = () => {
                   <button
                     key={r}
                     onClick={() => setSelectedRoundFilter(r)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                       selectedRoundFilter === r
-                        ? "bg-amber-500 text-gray-950 font-black shadow-md shadow-amber-500/20"
-                        : "bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.04]"
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-slate-800/80 text-slate-300 hover:bg-slate-700 border border-slate-700 font-semibold"
                     }`}
                   >
                     {r < tournament.current_round && (

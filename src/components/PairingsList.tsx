@@ -90,9 +90,17 @@ export const PairingsList: React.FC<PairingsListProps> = ({
             const isCompleted = match.status === 'completed';
             const isBye = match.is_bye || match.is_Bye || !p2;
 
-            const p1Won = isCompleted && match.winner_id === match.player1_id;
-            const p2Won = isCompleted && p2 && match.winner_id === p2.id;
-            const isDoubleLoss = isCompleted && match.is_double_loss;
+            const isDoubleLoss = isCompleted && Boolean(match.is_double_loss);
+            const p1Won = isCompleted && !isDoubleLoss && match.winner_id === match.player1_id;
+            const p2Won = isCompleted && !isDoubleLoss && Boolean(p2 && match.winner_id === p2.id);
+            const p1Lost =
+              isCompleted &&
+              !isBye &&
+              (isDoubleLoss || (match.winner_id !== null && match.winner_id !== match.player1_id));
+            const p2Lost =
+              isCompleted &&
+              !isBye &&
+              (isDoubleLoss || (match.winner_id !== null && Boolean(p2 && match.winner_id !== p2.id)));
 
             return (
               <div
@@ -138,66 +146,91 @@ export const PairingsList: React.FC<PairingsListProps> = ({
                 </div>
 
                 {/* Match Opponents Dual Display */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
                   {/* Player 1 Card */}
                   <div
-                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                    className={`flex-1 min-w-0 flex items-center justify-between gap-2 p-3.5 rounded-xl border transition-all ${
                       p1Won
-                        ? 'bg-gradient-to-r from-emerald-950/40 to-[#0e1626] border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.15)] ring-1 ring-emerald-500/20'
-                        : isCompleted && !isBye
-                        ? 'bg-black/20 border-white/[0.04] opacity-50'
-                        : 'bg-[#0b101c] border-white/[0.06] hover:border-white/10'
+                        ? 'bg-emerald-950/20 border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.15)] ring-1 ring-emerald-500/20'
+                        : p1Lost
+                        ? 'bg-slate-800/40 border-slate-700/70'
+                        : 'bg-slate-800/40 border-slate-700/70 hover:border-slate-600'
                     }`}
                   >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold">
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
                           🍀 #{p1?.lucky_draw_number ?? '-'}
                         </span>
-                        <span className={`font-bold text-base ${p1Won ? 'text-emerald-200' : 'text-white'}`}>
+                        <span className={`font-bold text-base truncate ${p1Won ? 'text-emerald-200' : 'text-white'}`}>
                           {p1?.name ?? 'ไม่พบข้อมูล'}
                         </span>
                       </div>
                     </div>
 
                     {p1Won && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-black shadow-sm">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-black shadow-sm shrink-0">
                         <Trophy className="w-3.5 h-3.5 text-emerald-300" />
                         <span>ชนะ</span>
                       </span>
                     )}
+                    {p1Lost && (
+                      <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-1 rounded text-xs font-medium shrink-0">
+                        แพ้
+                      </span>
+                    )}
+                    {!isCompleted && !isBye && (
+                      <span className="bg-slate-700/50 text-slate-300 border border-slate-600/50 px-2.5 py-1 rounded text-xs font-medium shrink-0">
+                        กำลังแข่งขัน
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Center VS Badge */}
+                  <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0 self-center">
+                    VS
                   </div>
 
                   {/* Player 2 Card or BYE */}
                   {isBye ? (
-                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 text-center text-amber-200 text-sm font-semibold flex items-center justify-center gap-2">
+                    <div className="flex-1 min-w-0 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 text-center text-amber-200 text-sm font-semibold flex items-center justify-center gap-2">
                       <span>ชนะ BYE</span>
                     </div>
                   ) : (
                     <div
-                      className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                      className={`flex-1 min-w-0 flex items-center justify-between gap-2 p-3.5 rounded-xl border transition-all ${
                         p2Won
-                          ? 'bg-gradient-to-r from-emerald-950/40 to-[#0e1626] border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.15)] ring-1 ring-emerald-500/20'
-                          : isCompleted
-                          ? 'bg-black/20 border-white/[0.04] opacity-50'
-                          : 'bg-[#0b101c] border-white/[0.06] hover:border-white/10'
+                          ? 'bg-emerald-950/20 border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.15)] ring-1 ring-emerald-500/20'
+                          : p2Lost
+                          ? 'bg-slate-800/40 border-slate-700/70'
+                          : 'bg-slate-800/40 border-slate-700/70 hover:border-slate-600'
                       }`}
                     >
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold">
+                      <div className="flex flex-col gap-1.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
                             🍀 #{p2?.lucky_draw_number ?? '-'}
                           </span>
-                          <span className={`font-bold text-base ${p2Won ? 'text-emerald-200' : 'text-white'}`}>
+                          <span className={`font-bold text-base truncate ${p2Won ? 'text-emerald-200' : 'text-white'}`}>
                             {p2?.name ?? 'ไม่พบข้อมูล'}
                           </span>
                         </div>
                       </div>
 
                       {p2Won && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-black shadow-sm">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-black shadow-sm shrink-0">
                           <Trophy className="w-3.5 h-3.5 text-emerald-300" />
                           <span>ชนะ</span>
+                        </span>
+                      )}
+                      {p2Lost && (
+                        <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-1 rounded text-xs font-medium shrink-0">
+                          แพ้
+                        </span>
+                      )}
+                      {!isCompleted && (
+                        <span className="bg-slate-700/50 text-slate-300 border border-slate-600/50 px-2.5 py-1 rounded text-xs font-medium shrink-0">
+                          กำลังแข่งขัน
                         </span>
                       )}
                     </div>

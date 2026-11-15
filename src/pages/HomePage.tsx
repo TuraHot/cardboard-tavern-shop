@@ -423,6 +423,7 @@ export const HomePage: React.FC = () => {
         {!loading && tournaments.length > 0 && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-8 bg-[#0c121e]/80 border border-white/[0.08] p-3 rounded-2xl shadow-lg backdrop-blur-md">
             {/* Filter Dropdowns */}
+            <div>การแข่งขันทั้งหมด {tournaments.length} รายการ</div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
               <select
                 aria-label="กรองตามสถานะการแข่งขัน"
@@ -435,7 +436,7 @@ export const HomePage: React.FC = () => {
                 className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer"
               >
                 <option value="all" className="bg-[#0e1422] text-white">
-                  ทั้งหมด ({tournaments.length})
+                  การแข่งขันทั้งหมด
                 </option>
                 <option value="active" className="bg-[#0e1422] text-white">
                   เปิดรับสมัคร & กำลังแข่งขัน
@@ -452,7 +453,7 @@ export const HomePage: React.FC = () => {
                 className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#070a12] border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer"
               >
                 <option value="all" className="bg-[#0e1422] text-white">
-                  ทั้งหมด ({tournaments.length})
+                  Format
                 </option>
                 {FORMAT_OPTIONS.map((fmt) => {
                   return (
@@ -557,10 +558,16 @@ export const HomePage: React.FC = () => {
 
               const currentPlayers = playerCounts[tourney.id] || 0;
               const maxCap = tourney.max_players || 20;
-              const feeText =
-                tourney.entry_fee !== undefined
-                  ? tourney.entry_fee === 0 ? "฿Free" : `฿${tourney.entry_fee}`
-                  : "฿70";
+              const capacityRatio = maxCap > 0 ? currentPlayers / maxCap : 0;
+              const isFull = currentPlayers >= maxCap;
+              const isNearFull = !isFull && capacityRatio >= 0.75;
+              const capacityPercent = Math.round(
+                Math.min(capacityRatio, 1) * 100,
+              );
+              const isFreeEntry = (tourney.entry_fee ?? 70) === 0;
+              const feeText = isFreeEntry
+                ? "Free"
+                : `฿${tourney.entry_fee ?? 70}`;
               const shopName = tourney.store_name || "Cardboard Tavern";
               const venue =
                 tourney.location || "Lotus หลักสี่ ชั้น 2 (BTS วัดพระศรี)";
@@ -604,13 +611,14 @@ export const HomePage: React.FC = () => {
                       {/* Top-Right: RECEPTION / Status Badge (Matching Reference) */}
                       <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-2">
                         {isRegistering && (
-                          <span className="px-2.5 py-0.5 rounded-md bg-[#00e676]/20 border border-[#00e676]/60 text-[#00e676] text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg">
-                            RECEPTION
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg">
+                            <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-1.5" />
+                            <span>RECEPTION</span>
                           </span>
                         )}
                         {isOngoing && (
-                          <span className="px-2.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg">
+                            <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-1.5" />
                             <span>ONGOING R{tourney.current_round}</span>
                           </span>
                         )}
@@ -665,19 +673,48 @@ export const HomePage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Bottom Bar: Fees Pill, Capacity Pill & Action Menu */}
+                  {/* Bottom Bar: Capacity Progress Bar, Fees Pill, Capacity Pill & Action Menu */}
                   <div className="p-3.5 pt-1">
-                    <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.06]">
-                      {/* Left: [ ฿70 ] and [ 👥 6/20 ] Badges */}
-                      <div className="flex items-center gap-1.5">
+                    {/* Mini Capacity Progress Bar */}
+                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mb-2.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isFull
+                            ? "bg-red-500"
+                            : isNearFull
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${capacityPercent}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.06] gap-2 flex-wrap">
+                      {/* Left: Entry Fee & Color-Coded Capacity Badges */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Price Pill */}
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#161e30] border border-white/10 text-[11px] font-mono font-bold text-gray-300 shadow-inner">
+                        <span
+                          className={
+                            isFreeEntry
+                              ? "inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-mono font-semibold"
+                              : "inline-flex items-center px-2.5 py-1 rounded-lg bg-[#161e30] border border-white/10 text-[11px] font-mono font-bold text-gray-300 shadow-inner"
+                          }
+                        >
                           {feeText}
                         </span>
 
                         {/* Capacity Pill */}
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#161e30] border border-white/10 text-[11px] font-mono font-bold text-gray-300 shadow-inner">
-                          <Users className="w-3 h-3 text-slate-400" />
+                        <span
+                          title={isFull ? "เต็มแล้ว" : undefined}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold ${
+                            isFull
+                              ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                              : isNearFull
+                                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          }`}
+                        >
+                          <Users className="w-3 h-3 shrink-0" />
                           <span>
                             {currentPlayers}/{maxCap}
                           </span>

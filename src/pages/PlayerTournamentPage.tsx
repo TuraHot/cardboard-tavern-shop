@@ -31,6 +31,7 @@ export const PlayerTournamentPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"pairings" | "standings" | "meta">(
     "pairings",
   );
+  const [selectedRoundFilter, setSelectedRoundFilter] = useState<number>(1);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Fetch all tournament data (3 queries in parallel)
@@ -114,6 +115,12 @@ export const PlayerTournamentPage: React.FC = () => {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (tournament?.current_round && tournament.current_round > 0) {
+      setSelectedRoundFilter(tournament.current_round);
+    }
+  }, [tournament?.current_round]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#06080d] flex items-center justify-center text-amber-400">
@@ -146,6 +153,14 @@ export const PlayerTournamentPage: React.FC = () => {
 
   const currentRoundMatches = matches.filter(
     (m) => m.round_number === tournament.current_round,
+  );
+
+  const availableRounds = Array.from(
+    { length: Math.max(1, tournament.current_round) },
+    (_, i) => i + 1,
+  );
+  const displayedMatches = matches.filter(
+    (m) => m.round_number === selectedRoundFilter,
   );
 
   const isCurrentRoundFullyCompleted =
@@ -313,14 +328,33 @@ export const PlayerTournamentPage: React.FC = () => {
               </div>
             ) : (
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <span>ตารางรอบที่ {tournament.current_round}</span>
+                    <span>ตารางรอบที่ {selectedRoundFilter}</span>
                   </h2>
+
+                  {tournament.current_round > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                      {availableRounds.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setSelectedRoundFilter(r)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs transition-all whitespace-nowrap ${
+                            selectedRoundFilter === r
+                              ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                              : "bg-slate-800/80 text-slate-300 hover:bg-slate-700 border border-slate-700 font-semibold"
+                          }`}
+                        >
+                          รอบที่ {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <PairingsList
-                  matches={currentRoundMatches}
+                  matches={displayedMatches}
                   players={players}
                   canReport={false}
                 />
